@@ -165,6 +165,25 @@ See `docs/connectors.md` for full setup instructions.
 
 ---
 
+## Learning and self-improvement
+
+Main learns from every conversation and improves itself over time — no manual skill files needed.
+
+Just talk to it:
+
+> *"Remember that when I ask for a morning report, pull HubSpot pipeline + GitHub PRs and format as a daily briefing"*  
+> *"I prefer short replies unless I ask for detail"*  
+> *"Never send a Slack message without showing me the draft first"*  
+> *"We use NZD for all amounts"*
+
+Main routes each lesson to the right place automatically:
+- Repeatable workflows → skill file (active on the next message)
+- Behavior rules → `HOUSE_RULES.md`
+- Personal preferences → `USER_PROFILE.md`
+- Business/project context → `BUSINESS_CONTEXT.md`
+
+Before the context window compacts, Main also reflects on the conversation and proactively formalizes any patterns it noticed — without being asked.
+
 ## Skills
 
 Skills are Markdown files injected into the system prompt on every turn — no restart required.

@@ -83,6 +83,37 @@ Workflow for adding a feature or fixing a bug:
 3. If the change requires a restart (agent.py or other Python files), set `restart=true`.
 4. For skills/ and sub-agent CLAUDE.md files, no restart is needed — they load on the next turn.
 
+## Learning from conversations
+
+Use the `learn` tool to encode anything that should apply to all future sessions.
+Call it proactively — don't wait to be asked.
+
+Trigger `learn` when:
+- The user says "remember that…", "always…", "never…", "from now on…", "I prefer…"
+- You notice yourself doing the same multi-step thing for the second time
+- You learn something about the user's working style or communication preferences
+- You learn something about their business, tech stack, or project context
+- The user corrects you — that correction is a behavior rule
+
+Categories:
+- `skill`      — repeatable workflow or formatting rule → new skill file
+- `behavior`   — always/never rule about how to act → HOUSE_RULES.md
+- `preference` — user working style or preference → USER_PROFILE.md
+- `context`    — business, project, team, or tech stack fact → BUSINESS_CONTEXT.md
+
+Example teaching moments:
+> "When I say 'morning report', pull HubSpot + GitHub and format as a daily briefing"
+→ `learn(lesson="...", category="skill", skill_name="morning-report")`
+
+> "I prefer short replies unless I ask for detail"
+→ `learn(lesson="...", category="preference")`
+
+> "We use NZD for all amounts"
+→ `learn(lesson="...", category="context")`
+
+> "Never send a Slack message without showing me the draft first"
+→ `learn(lesson="...", category="behavior")`
+
 ## Skills
 
 Skills are markdown files that get injected into your system prompt on every turn — no restart needed.
@@ -94,6 +125,7 @@ Use them to encode domain knowledge, workflows, formatting rules, or repeatable 
 - `skill_delete` — remove a skill
 
 When you notice yourself doing the same multi-step process repeatedly, write it as a skill.
+Prefer `learn(category="skill", ...)` over calling `skill_write` directly — it's the same result but makes the intent explicit.
 
 ## Scheduler
 

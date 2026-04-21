@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.12.0] — Conversational Learning — 2026-04-21
+
+### Added
+- `learn` SDK tool — single interface for all teaching; routes lessons to the right place based on category: `skill` (new skill file, hot-loaded), `behavior` (HOUSE_RULES.md), `preference` (USER_PROFILE.md), `context` (BUSINESS_CONTEXT.md); reindexes memory on write
+- `CLAUDE.md` — new "Learning from conversations" section with explicit trigger conditions and examples for each category; agent is instructed to call `learn` proactively, not wait to be asked
+
+### Changed
+- Flush prompt (`memory/flush.py`) — extended to include a reflection step: before compaction, agent scans the conversation for patterns to formalize via `learn`, in addition to writing facts to memory files
+
 ## [0.11.0] — Safe Self-Editing — 2026-04-21
 
 ### Added

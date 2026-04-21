@@ -21,13 +21,20 @@ FLUSH_THRESHOLD_TOKENS = 150_000
 CHARS_PER_TOKEN = 4
 
 FLUSH_PROMPT = """\
-Before this context window is summarized, review our conversation and \
-write anything important to disk:
+Before this context window is summarized, do the following:
 
-- Durable facts, preferences, or decisions → append to ~/MEMORY.md
-- Today's context and observations → append to ~/memory/{today}.md
+1. Save durable facts, preferences, and decisions:
+   - Long-term facts → memory_write_long_term
+   - Today's context and observations → memory_write_daily (date: {today})
 
-If there is nothing new worth saving, respond with exactly: NO_REPLY
+2. Formalize any patterns or learnings from this conversation:
+   - Did the user teach you something? ("remember", "always", "never", "from now on") → learn
+   - Did you do the same multi-step thing more than once? → learn (category: skill)
+   - Did you learn something about the user's preferences or style? → learn (category: preference)
+   - Did you learn something about the business or project? → learn (category: context)
+
+If there is nothing new worth saving and no patterns to formalize, \
+respond with exactly: NO_REPLY
 """
 
 

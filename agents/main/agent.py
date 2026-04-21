@@ -103,6 +103,7 @@ _BASE_TOOLS = [
     "scheduler_add", "scheduler_list", "scheduler_remove", "schedule_once",
     "send_message",
     "self_edit",
+    "learn",
 ]
 
 def _build_allowed_tools() -> Optional[list[str]]:
@@ -530,6 +531,68 @@ async def tool_self_edit(args: dict) -> dict:
     return {"content": [{"type": "text", "text": msg}], **({"is_error": True} if not ok else {})}
 
 
+# ── Learning tool ─────────────────────────────────────────────────────────────
+
+_LEARN_CATEGORIES = {"skill", "behavior", "preference", "context"}
+
+@sdk.tool(
+    name="learn",
+    description=(
+        "Permanently encode something the user taught you, or a pattern you noticed, "
+        "into the right place so it applies to all future sessions.\n\n"
+        "Categories:\n"
+        "- 'skill'      → new/updated skill file (hot-loaded, no restart); "
+        "use for repeatable workflows, formatting rules, multi-step procedures\n"
+        "- 'behavior'   → appended to HOUSE_RULES.md; use for always/never rules "
+        "about how you should act\n"
+        "- 'preference' → appended to USER_PROFILE.md; use for the user's personal "
+        "preferences, working style, communication style\n"
+        "- 'context'    → appended to BUSINESS_CONTEXT.md; use for facts about the "
+        "business, project, team, or tech stack\n\n"
+        "skill_name is required when category='skill' — use a short slug like "
+        "'morning-report' or 'hubspot-format'."
+    ),
+    input_schema={"lesson": str, "category": str, "skill_name": str},
+)
+async def tool_learn(args: dict) -> dict:
+    lesson = (args.get("lesson") or "").strip()
+    category = (args.get("category") or "").strip().lower()
+    skill_name = (args.get("skill_name") or "").strip()
+
+    if not lesson:
+        return {"content": [{"type": "text", "text": "lesson is required."}], "is_error": True}
+    if category not in _LEARN_CATEGORIES:
+        opts = ", ".join(sorted(_LEARN_CATEGORIES))
+        return {"content": [{"type": "text", "text": f"category must be one of: {opts}"}], "is_error": True}
+
+    if category == "skill":
+        if not skill_name:
+            return {"content": [{"type": "text", "text": "skill_name is required when category='skill'."}], "is_error": True}
+        filename = _skills_mod.write_skill(skill_name, lesson)
+        return {"content": [{"type": "text", "text": f"Skill saved: {filename}. Active on the next turn."}]}
+
+    # Soul file routing
+    soul_file_map = {
+        "behavior":   SHARED_DIR / "HOUSE_RULES.md",
+        "preference": SHARED_DIR / "USER_PROFILE.md",
+        "context":    SHARED_DIR / "BUSINESS_CONTEXT.md",
+    }
+    target = soul_file_map[category]
+
+    if not target.exists():
+        target.write_text(f"# {target.stem}\n\n", encoding="utf-8")
+
+    with target.open("a", encoding="utf-8") as f:
+        f.write(f"\n- {lesson}\n")
+
+    # Reindex in memory index if it's tracking this file
+    if _mem_index:
+        _mem_index.reindex_file(target)
+
+    logger.info("learn: appended to %s", target.name)
+    return {"content": [{"type": "text", "text": f"Learned and saved to {target.name}. Active on the next turn."}]}
+
+
 # ── Proactive messaging tools ─────────────────────────────────────────────────
 
 @sdk.tool(
@@ -617,6 +680,7 @@ _memory_mcp = sdk.create_sdk_mcp_server(
         tool_scheduler_add, tool_scheduler_list, tool_scheduler_remove,
         tool_send_message, tool_schedule_once,
         tool_self_edit,
+        tool_learn,
     ],
 )
 
