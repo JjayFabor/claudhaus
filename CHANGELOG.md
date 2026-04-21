@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.11.0] — Safe Self-Editing — 2026-04-21
+
+### Added
+- `self_edit` SDK tool — safe wrapper for all project file edits: backs up before touching, auto-reverts on syntax error, commits to git on success; supports targeted replacement (old_string/new_string) and full rewrite (new_content); optional `restart=true` flag to restart the bot after a Python edit
+- `agents/main/self_edit.py` — standalone editing module; path-jail (refuses paths outside project root), `replace_all` flag, py_compile check, git commit
+
+### Changed
+- `CLAUDE.md` — Self-improvement section rewritten: agent is instructed to always use `self_edit` instead of raw Edit/Write for project files
+
 ## [0.10.0] — Proactive Messaging — 2026-04-21
 
 ### Added

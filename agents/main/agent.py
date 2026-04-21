@@ -55,6 +55,7 @@ from agents.main.connectors import (
 from agents.main import skills as _skills_mod
 from agents.main import media as _media_mod
 from agents.main import discord_bot as _discord_mod
+from agents.main import self_edit as _self_edit_mod
 from agents.main.subagents import list_subagents, create_subagent, run_subagent
 from agents.main.scheduler import (
     init_scheduler_table,
@@ -101,6 +102,7 @@ _BASE_TOOLS = [
     "subagent_list", "subagent_create", "subagent_run",
     "scheduler_add", "scheduler_list", "scheduler_remove", "schedule_once",
     "send_message",
+    "self_edit",
 ]
 
 def _build_allowed_tools() -> Optional[list[str]]:
@@ -472,6 +474,62 @@ async def tool_scheduler_remove(args: dict) -> dict:
     return {"content": [{"type": "text", "text": f"Task #{task_id} removed."}]}
 
 
+# ── Self-editing tool ─────────────────────────────────────────────────────────
+
+@sdk.tool(
+    name="self_edit",
+    description=(
+        "Safely edit any file in the claudhaus project — your own source code, "
+        "CLAUDE.md, skills, sub-agent configs, or any project file. "
+        "Creates a backup before editing, syntax-checks Python files, "
+        "auto-reverts on any failure, and commits the change to git on success. "
+        "Use this instead of raw Edit/Write for all project file changes. "
+        "Modes: (a) targeted — provide old_string + new_string; "
+        "(b) full rewrite — provide new_content. "
+        "Set restart=true to restart the bot after a successful Python edit."
+    ),
+    input_schema={
+        "file_path": str,
+        "old_string": str,
+        "new_string": str,
+        "new_content": str,
+        "description": str,
+        "replace_all": bool,
+        "restart": bool,
+    },
+)
+async def tool_self_edit(args: dict) -> dict:
+    global _restart_requested
+    file_path = args.get("file_path", "").strip()
+    if not file_path:
+        return {"content": [{"type": "text", "text": "file_path is required."}], "is_error": True}
+
+    old_string = args.get("old_string") or None
+    new_string = args.get("new_string") or None
+    new_content = args.get("new_content") or None
+    description = (args.get("description") or "agent self-edit").strip()
+    replace_all = bool(args.get("replace_all", False))
+    restart = bool(args.get("restart", False))
+
+    ok, msg = await asyncio.get_event_loop().run_in_executor(
+        None,
+        lambda: _self_edit_mod.apply_edit(
+            file_path=file_path,
+            old_string=old_string,
+            new_string=new_string,
+            new_content=new_content,
+            description=description,
+            replace_all=replace_all,
+        ),
+    )
+
+    if ok and restart:
+        _restart_requested = True
+        msg += " Restarting..."
+
+    return {"content": [{"type": "text", "text": msg}], **({"is_error": True} if not ok else {})}
+
+
 # ── Proactive messaging tools ─────────────────────────────────────────────────
 
 @sdk.tool(
@@ -558,6 +616,7 @@ _memory_mcp = sdk.create_sdk_mcp_server(
         tool_subagent_list, tool_subagent_create, tool_subagent_run,
         tool_scheduler_add, tool_scheduler_list, tool_scheduler_remove,
         tool_send_message, tool_schedule_once,
+        tool_self_edit,
     ],
 )
 

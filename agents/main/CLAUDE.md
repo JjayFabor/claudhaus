@@ -68,14 +68,20 @@ Define how the agent should act. Keep or replace these defaults.
 The project root is at ~/JjayFiles/claude-command-center/ (use absolute paths).
 You can read and edit your own source code to add features or fix bugs.
 
-When modifying agent.py or any Python file in the project:
-1. Read the file first to understand the full context.
-2. Make the edit.
-3. Always run `python -m py_compile <file>` to verify there are no syntax errors before restarting.
-4. If the syntax check passes, restart with `systemctl --user restart claude-main.service`.
-5. If the check fails, fix the error before restarting — a broken agent.py means the bot goes silent.
+**Always use `self_edit` for any change to project files.** Never use raw Edit or Write on project files.
 
-For skills/ and sub-agent CLAUDE.md files, no restart is needed — they load on the next turn.
+`self_edit` does this automatically:
+1. Backs up the file before touching it
+2. Applies the edit (targeted replacement or full rewrite)
+3. Runs `py_compile` on Python files — if it fails, reverts the backup immediately
+4. Commits the change to git on success
+5. If you pass `restart=true`, restarts the bot after a successful Python edit
+
+Workflow for adding a feature or fixing a bug:
+1. Read the relevant file(s) first — understand the full context.
+2. Call `self_edit` with a clear description of what you're changing.
+3. If the change requires a restart (agent.py or other Python files), set `restart=true`.
+4. For skills/ and sub-agent CLAUDE.md files, no restart is needed — they load on the next turn.
 
 ## Skills
 
