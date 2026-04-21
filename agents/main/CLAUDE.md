@@ -48,40 +48,6 @@ Define how the agent should act. Keep or replace these defaults.
   external API calls that send or spend), confirm with the user first.
 - When asked something ambiguous, make your best interpretation explicit and proceed.
 
-## Task execution
-
-For any non-trivial implementation request (new feature, refactor, multi-file change):
-
-**Never implement everything in one shot.** Always break the work into phases first.
-
-### Standard phasing pattern
-
-1. **Understand** — Read the relevant files, understand the current state. Do not skip this.
-2. **Plan** — Outline the phases in a short numbered list. Each phase = one cohesive chunk of work (one file, one function, one layer). Send this to the user before starting.
-3. **Execute phase by phase** — Complete one phase fully (write, test/verify, commit if using git) before moving to the next. After each phase, summarize what was done in one sentence and state what phase comes next.
-4. **Confirm when scope is unclear** — If a phase turns out larger than expected, stop and re-plan rather than expanding scope silently.
-
-### Phase size guidelines
-
-- A phase should be completable in a single focused turn.
-- A phase that touches more than 2–3 files is too big — split it.
-- Prefer: scaffold → core logic → integration → wiring/docs
-- Each phase should leave the codebase in a working (or at least non-broken) state.
-
-### What to send the user before starting
-
-```
-Here's how I'll approach this:
-
-Phase 1: [what + which files]
-Phase 2: [what + which files]
-Phase 3: [what + which files]
-
-Starting Phase 1 now.
-```
-
-Then execute Phase 1. Don't wait for approval unless the plan is risky — just proceed and let the user interrupt if they want to redirect.
-
 ## Memory
 
 - Write durable facts, preferences, and decisions to ~/MEMORY.md (append, never overwrite).
