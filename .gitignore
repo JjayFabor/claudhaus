@@ -16,8 +16,8 @@ data/*.db-journal
 # Workspaces (contain personal memory files)
 workspaces/
 
-# Personal instruction overrides
-**/CLAUDE.personal.md
+# Personal overrides — any *.personal.md anywhere in the repo
+**/*.personal.md
 
 # Skills are personal — not committed
 agents/main/skills/
@@ -46,3 +46,4 @@ agents/shared/HOUSE_RULES.md
 # Dashboard (Next.js)
 dashboard-ui/.next/
 dashboard-ui/node_modules/
+dashboard-ui/tsconfig.tsbuildinfo
