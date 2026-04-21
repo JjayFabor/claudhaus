@@ -195,8 +195,7 @@ async def run_claude(prompt: str, chat_id: int) -> str:
     options = sdk.ClaudeAgentOptions(
         system_prompt=system_prompt,
         cwd=str(WORKSPACE),
-        session_id=session_id,
-        continue_conversation=session_id is not None,
+        resume=session_id,  # resume= continues an existing session; session_id= names a new one
     )
 
     reply_parts: list[str] = []
