@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] — Phase 4 — 2026-04-21
+
+### Added
+- `memory/index.py` — BM25 index over MEMORY.md + daily notes, file watcher (5s poll), chunker with overlap
+- `memory/search.py` — BM25 search with token-presence filter (works correctly on small corpora)
+- `memory/flush.py` — pre-compaction flush manager; fires silent turn before context window fills
+- `memory/dreaming.py` — nightly consolidation sweep (disabled by default, writes DREAMS.md candidates)
+- Four in-process SDK tools: `memory_search`, `memory_write_long_term`, `memory_write_daily`, `memory_read_file`
+- Updated session start injection: soul files → MEMORY.md → today/yesterday notes → CLAUDE.md
+- `~/memory`, `~/MEMORY.md`, `~/DREAMS.md` symlinks so bundled claude CLI writes to correct workspace paths
+- Today's daily note seeded on startup if it doesn't exist
+
 ## [0.2.0] — Phase 2 — 2026-04-21
 
 ### Added

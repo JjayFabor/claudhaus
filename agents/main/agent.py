@@ -1,9 +1,7 @@
 """
 agents/main/agent.py — Main bot runner.
 
-One Telegram bot, one Claude agent, full session persistence.
-Each inbound message streams through the Claude Agent SDK and replies
-are sent back as chunked Telegram messages.
+One Telegram bot, one Claude agent, full session persistence + memory.
 """
 
 import asyncio
@@ -12,6 +10,8 @@ import logging
 import os
 import re
 import sqlite3
+import sys
+from datetime import date
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
@@ -31,13 +31,15 @@ WORKSPACE = ROOT / "workspaces" / "main"
 DB_PATH = ROOT / "data" / "memory.db"
 LOG_PATH = ROOT / "logs" / "main.log"
 
+sys.path.insert(0, str(ROOT))
+
 # ── Logging ────────────────────────────────────────────────────────────────────
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-handler = RotatingFileHandler(LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=3)
+_handler = RotatingFileHandler(LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=3)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    handlers=[handler, logging.StreamHandler()],
+    handlers=[_handler, logging.StreamHandler()],
 )
 logger = logging.getLogger("main")
 
@@ -56,7 +58,103 @@ ALLOWED_CHAT_IDS: set[int] = {
     int(x.strip()) for x in _raw_chat_ids.split(",") if x.strip()
 }
 
-TG_MAX_CHARS = 4000  # Telegram limit is 4096; leave headroom
+TG_MAX_CHARS = 4000
+
+
+# ── Memory index (initialised in main()) ──────────────────────────────────────
+from memory.index import MemoryIndex
+from memory.search import search as _mem_search
+from memory.flush import FlushManager
+
+_mem_index: Optional[MemoryIndex] = None
+_flush_mgr = FlushManager()
+
+
+# ── In-process memory tools ───────────────────────────────────────────────────
+
+@sdk.tool(
+    name="memory_search",
+    description="Search long-term memory and daily notes for past facts, preferences, and decisions. Call this before answering questions about past work or preferences.",
+    input_schema={"query": str, "limit": int},
+)
+async def tool_memory_search(args: dict) -> dict:
+    query = args.get("query", "")
+    limit = int(args.get("limit", 5))
+    if _mem_index is None:
+        return {"content": [{"type": "text", "text": "Memory index not initialised."}]}
+    result = _mem_search(_mem_index, query, limit=limit)
+    return {"content": [{"type": "text", "text": result}]}
+
+
+@sdk.tool(
+    name="memory_write_long_term",
+    description="Append a durable fact, preference, or decision to MEMORY.md. Use for things that should be remembered across all future sessions.",
+    input_schema={"content": str},
+)
+async def tool_memory_write_long_term(args: dict) -> dict:
+    content = args.get("content", "").strip()
+    if not content:
+        return {"content": [{"type": "text", "text": "Error: content is empty."}], "is_error": True}
+    memory_md = WORKSPACE / "MEMORY.md"
+    memory_md.parent.mkdir(parents=True, exist_ok=True)
+    with memory_md.open("a", encoding="utf-8") as f:
+        f.write(f"\n{content}\n")
+    if _mem_index:
+        _mem_index.reindex_file(memory_md)
+    logger.info("memory_write_long_term: wrote %d chars", len(content))
+    return {"content": [{"type": "text", "text": f"Written to MEMORY.md: {content[:80]}..."}]}
+
+
+@sdk.tool(
+    name="memory_write_daily",
+    description="Append an observation or context note to today's daily memory file (memory/YYYY-MM-DD.md). Use for short-term context that may be useful for the next few days.",
+    input_schema={"content": str},
+)
+async def tool_memory_write_daily(args: dict) -> dict:
+    content = args.get("content", "").strip()
+    if not content:
+        return {"content": [{"type": "text", "text": "Error: content is empty."}], "is_error": True}
+    today = date.today().isoformat()
+    daily_file = WORKSPACE / "memory" / f"{today}.md"
+    daily_file.parent.mkdir(parents=True, exist_ok=True)
+    if not daily_file.exists():
+        daily_file.write_text(f"# {today}\n\n", encoding="utf-8")
+    with daily_file.open("a", encoding="utf-8") as f:
+        f.write(f"- {content}\n")
+    if _mem_index:
+        _mem_index.reindex_file(daily_file)
+    logger.info("memory_write_daily: wrote to %s", daily_file.name)
+    return {"content": [{"type": "text", "text": f"Written to {daily_file.name}: {content[:80]}"}]}
+
+
+@sdk.tool(
+    name="memory_read_file",
+    description="Read a memory file by name. Valid values: 'MEMORY.md', 'DREAMS.md', or a date like '2026-04-21' to read that day's notes.",
+    input_schema={"path": str},
+)
+async def tool_memory_read_file(args: dict) -> dict:
+    path_arg = args.get("path", "").strip()
+    if not path_arg:
+        return {"content": [{"type": "text", "text": "Error: path is required."}], "is_error": True}
+
+    if path_arg in ("MEMORY.md", "DREAMS.md"):
+        target = WORKSPACE / path_arg
+    elif re.match(r"^\d{4}-\d{2}-\d{2}$", path_arg):
+        target = WORKSPACE / "memory" / f"{path_arg}.md"
+    else:
+        return {"content": [{"type": "text", "text": f"Invalid path: {path_arg!r}. Use 'MEMORY.md', 'DREAMS.md', or a YYYY-MM-DD date."}], "is_error": True}
+
+    if not target.exists():
+        return {"content": [{"type": "text", "text": f"{path_arg} does not exist yet."}]}
+    text = target.read_text(encoding="utf-8")
+    return {"content": [{"type": "text", "text": text or "(empty)"}]}
+
+
+# ── MCP server bundling all memory tools ──────────────────────────────────────
+_memory_mcp = sdk.create_sdk_mcp_server(
+    name="memory",
+    tools=[tool_memory_search, tool_memory_write_long_term, tool_memory_write_daily, tool_memory_read_file],
+)
 
 
 # ── Instruction loader ─────────────────────────────────────────────────────────
@@ -72,7 +170,16 @@ def load_instructions(agent_dir: Path) -> Path:
 
 
 def build_system_prompt() -> str:
-    """Concatenate soul files + instruction file into a single system prompt string."""
+    """
+    Injection order:
+      1. USER_PROFILE.md
+      2. BUSINESS_CONTEXT.md
+      3. HOUSE_RULES.md
+      4. MEMORY.md  (long-term memory)
+      5. memory/today.md  (today's notes)
+      6. memory/yesterday.md  (yesterday's notes)
+      7. CLAUDE.personal.md or CLAUDE.md
+    """
     parts: list[str] = []
 
     for soul_file in [
@@ -80,12 +187,24 @@ def build_system_prompt() -> str:
         SHARED_DIR / "BUSINESS_CONTEXT.md",
         SHARED_DIR / "HOUSE_RULES.md",
     ]:
-        if soul_file.exists():
+        if soul_file.exists() and soul_file.stat().st_size > 0:
             parts.append(soul_file.read_text().strip())
 
-    instruction_file = load_instructions(AGENT_DIR)
-    parts.append(instruction_file.read_text().strip())
+    # Long-term memory
+    memory_md = WORKSPACE / "MEMORY.md"
+    if memory_md.exists() and memory_md.stat().st_size > 0:
+        parts.append("## Long-term Memory\n\n" + memory_md.read_text().strip())
 
+    # Daily notes: today and yesterday
+    today = date.today()
+    for delta, label in [(0, "Today"), (1, "Yesterday")]:
+        d = today.replace(day=today.day - delta) if delta == 0 else \
+            date.fromordinal(today.toordinal() - delta)
+        daily = WORKSPACE / "memory" / f"{d.isoformat()}.md"
+        if daily.exists() and daily.stat().st_size > 0:
+            parts.append(f"## Daily Notes ({label}, {d.isoformat()})\n\n" + daily.read_text().strip())
+
+    parts.append(load_instructions(AGENT_DIR).read_text().strip())
     return "\n\n---\n\n".join(parts)
 
 
@@ -145,34 +264,22 @@ def db_log(chat_id: int, role: str, content: str) -> None:
 def is_allowed(update: Update) -> bool:
     user_id = update.effective_user.id if update.effective_user else None
     chat_id = update.effective_chat.id if update.effective_chat else None
-
     if user_id is None or chat_id is None:
         return False
-
-    is_dm = chat_id == user_id  # private chat: chat_id == user_id
-
+    is_dm = chat_id == user_id
     if is_dm:
         return user_id in ALLOWED_USER_IDS
-
-    # Group or channel: both user and chat must be in their respective lists
     return user_id in ALLOWED_USER_IDS and chat_id in ALLOWED_CHAT_IDS
 
 
 # ── Markdown → Telegram HTML ──────────────────────────────────────────────────
 def md_to_html(text: str) -> str:
-    """
-    Convert Claude's markdown output to Telegram-compatible HTML.
-    Telegram supports: <b> <i> <u> <s> <code> <pre> <a href>
-    Tables are not supported — converted to <pre> blocks.
-    """
     result = []
     lines = text.split("\n")
     i = 0
-
     while i < len(lines):
         line = lines[i]
 
-        # ── Fenced code block ──────────────────────────────────────────────────
         if line.startswith("```"):
             lang = line[3:].strip()
             code_lines = []
@@ -188,33 +295,27 @@ def md_to_html(text: str) -> str:
             i += 1
             continue
 
-        # ── Markdown table ─────────────────────────────────────────────────────
         if "|" in line and i + 1 < len(lines) and re.match(r"^\s*\|[-| :]+\|\s*$", lines[i + 1]):
             table_lines = []
             while i < len(lines) and "|" in lines[i]:
-                # Strip separator rows
                 if not re.match(r"^\s*\|[-| :]+\|\s*$", lines[i]):
-                    # Clean up cells
                     cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
                     table_lines.append("  ".join(cells))
                 i += 1
             result.append("<pre>" + html.escape("\n".join(table_lines)) + "</pre>")
             continue
 
-        # ── Heading ────────────────────────────────────────────────────────────
         m = re.match(r"^(#{1,3})\s+(.*)", line)
         if m:
             result.append("<b>" + _inline(m.group(2)) + "</b>")
             i += 1
             continue
 
-        # ── Horizontal rule ────────────────────────────────────────────────────
         if re.match(r"^[-*_]{3,}\s*$", line):
             result.append("─────────────────────")
             i += 1
             continue
 
-        # ── Regular line ───────────────────────────────────────────────────────
         result.append(_inline(line))
         i += 1
 
@@ -222,22 +323,18 @@ def md_to_html(text: str) -> str:
 
 
 def _inline(text: str) -> str:
-    """Apply inline markdown formatting, HTML-escaping unformatted text."""
-    # Split on code spans first to avoid processing their contents
     parts = re.split(r"(`[^`]+`)", text)
     out = []
     for part in parts:
         if part.startswith("`") and part.endswith("`") and len(part) > 1:
             out.append("<code>" + html.escape(part[1:-1]) + "</code>")
         else:
-            # Bold before italic to handle **text** vs *text*
             p = html.escape(part)
             p = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", p)
             p = re.sub(r"__(.+?)__", r"<b>\1</b>", p)
             p = re.sub(r"\*(.+?)\*", r"<i>\1</i>", p)
             p = re.sub(r"_(.+?)_", r"<i>\1</i>", p)
             p = re.sub(r"~~(.+?)~~", r"<s>\1</s>", p)
-            # Links: [text](url) → <a href="url">text</a>
             p = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', p)
             out.append(p)
     return "".join(out)
@@ -245,10 +342,8 @@ def _inline(text: str) -> str:
 
 # ── Message chunker ────────────────────────────────────────────────────────────
 def chunk_text(text: str, max_len: int = TG_MAX_CHARS) -> list[str]:
-    """Split text at paragraph or line boundaries to stay under max_len."""
     if len(text) <= max_len:
         return [text]
-
     chunks: list[str] = []
     pos = 0
     while pos < len(text):
@@ -256,7 +351,6 @@ def chunk_text(text: str, max_len: int = TG_MAX_CHARS) -> list[str]:
         if len(remaining) <= max_len:
             chunks.append(remaining)
             break
-        # Try to cut at a paragraph boundary first, then newline, then space
         slice_ = text[pos : pos + max_len]
         cut = slice_.rfind("\n\n")
         if cut == -1:
@@ -264,18 +358,20 @@ def chunk_text(text: str, max_len: int = TG_MAX_CHARS) -> list[str]:
         if cut == -1:
             cut = slice_.rfind(" ")
         if cut <= 0:
-            cut = max_len  # hard cut as last resort
+            cut = max_len
         else:
-            cut += 1  # include the separator in the left chunk
+            cut += 1
         chunks.append(text[pos : pos + cut].strip())
         pos += cut
-
     return [c for c in chunks if c]
 
 
 # ── Claude query ───────────────────────────────────────────────────────────────
-async def run_claude(prompt: str, chat_id: int) -> str:
-    """Run one Claude turn. Returns the final text reply."""
+async def run_claude(prompt: str, chat_id: int, silent: bool = False) -> str:
+    """
+    Run one Claude turn. Returns the final text reply.
+    silent=True suppresses NO_REPLY responses (used for flush turns).
+    """
     session_id = db_get_session(chat_id)
     system_prompt = build_system_prompt()
 
@@ -285,6 +381,13 @@ async def run_claude(prompt: str, chat_id: int) -> str:
         resume=session_id,
         permission_mode="bypassPermissions",
         setting_sources=["user"],
+        mcp_servers={"memory": _memory_mcp},
+        allowed_tools=[
+            "Bash", "Read", "Write", "Edit", "Glob", "Grep",
+            "WebSearch", "WebFetch", "TodoWrite",
+            "memory_search", "memory_write_long_term",
+            "memory_write_daily", "memory_read_file",
+        ],
     )
 
     reply_parts: list[str] = []
@@ -302,11 +405,10 @@ async def run_claude(prompt: str, chat_id: int) -> str:
                 if event.session_id:
                     new_session_id = event.session_id
     except sdk.CLINotFoundError:
-        logger.error("claude CLI not found — is it installed and on PATH?")
+        logger.error("claude CLI not found")
         return "Error: claude CLI not found. Make sure `claude` is installed and authenticated."
     except sdk.CLIConnectionError as e:
         logger.error("Claude connection error: %s", e)
-        # Drop stale session and let next message start fresh
         db_delete_session(chat_id)
         return "Connection error — session reset. Please try again."
     except Exception as e:
@@ -316,7 +418,26 @@ async def run_claude(prompt: str, chat_id: int) -> str:
     if new_session_id:
         db_save_session(chat_id, new_session_id)
 
-    return "".join(reply_parts).strip() or "(no response)"
+    reply = "".join(reply_parts).strip()
+
+    if silent and reply == "NO_REPLY":
+        return ""
+
+    return reply or "(no response)"
+
+
+# ── Pre-compaction flush ───────────────────────────────────────────────────────
+async def maybe_flush(chat_id: int) -> None:
+    """Fire a silent flush turn if the session is approaching context limits."""
+    if not _flush_mgr.needs_flush(chat_id):
+        return
+    logger.info("Flushing memory for chat %d before compaction", chat_id)
+    today = date.today().isoformat()
+    flush_prompt = _flush_mgr.flush_prompt(today)
+    reply = await run_claude(flush_prompt, chat_id, silent=True)
+    _flush_mgr.reset(chat_id)
+    if reply:
+        logger.info("Flush produced output: %s...", reply[:60])
 
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
@@ -345,6 +466,7 @@ async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     chat_id = update.effective_chat.id
     db_delete_session(chat_id)
+    _flush_mgr.reset(chat_id)
     await update.message.reply_text("Session reset. Next message starts a fresh conversation.")
 
 
@@ -357,11 +479,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.effective_chat.id
     user_text = update.message.text
     db_log(chat_id, "user", user_text)
+    _flush_mgr.record(chat_id, user_text)
 
-    # Send typing indicator while Claude works
+    # Fire flush turn if we're near the context limit (transparent to user)
+    await maybe_flush(chat_id)
+
     await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
-
-    # Keep typing indicator alive during long runs
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
 
     try:
@@ -370,18 +493,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         typing_task.cancel()
 
     db_log(chat_id, "assistant", reply)
+    _flush_mgr.record(chat_id, reply)
 
     formatted = md_to_html(reply)
     for chunk in chunk_text(formatted):
         try:
             await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
         except Exception:
-            # Fall back to plain text if HTML parsing fails
             await update.message.reply_text(chunk)
 
 
 async def _keep_typing(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
-    """Resend typing action every 4 seconds until cancelled."""
     try:
         while True:
             await asyncio.sleep(4)
@@ -396,21 +518,31 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 def main() -> None:
+    global _mem_index
+
     init_db()
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     (WORKSPACE / "memory").mkdir(exist_ok=True)
     (WORKSPACE / "sessions").mkdir(exist_ok=True)
 
+    # Seed memory files so they always exist for appending
+    for seed in [WORKSPACE / "MEMORY.md", WORKSPACE / "DREAMS.md"]:
+        seed.touch(exist_ok=True)
+    today_note = WORKSPACE / "memory" / f"{date.today().isoformat()}.md"
+    if not today_note.exists():
+        today_note.write_text(f"# {date.today().isoformat()}\n\n", encoding="utf-8")
+
+    # Build memory index and start file watcher
+    _mem_index = MemoryIndex(WORKSPACE)
+    _mem_index.build()
+    _mem_index.start_watcher()
+
     instruction_file = load_instructions(AGENT_DIR)
     logger.info("Starting Main — instructions: %s", instruction_file.name)
     logger.info("Allowed user IDs: %s", ALLOWED_USER_IDS)
+    logger.info("Memory index ready — watcher running")
 
-    app = (
-        Application.builder()
-        .token(BOT_TOKEN)
-        .build()
-    )
-
+    app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("whoami", cmd_whoami))
     app.add_handler(CommandHandler("reset", cmd_reset))
