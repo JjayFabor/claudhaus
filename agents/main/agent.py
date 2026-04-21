@@ -104,6 +104,7 @@ _BASE_TOOLS = [
     "send_message",
     "self_edit",
     "learn",
+    "run_bg", "job_wait", "job_status",
 ]
 
 def _build_allowed_tools() -> Optional[list[str]]:
@@ -593,6 +594,99 @@ async def tool_learn(args: dict) -> dict:
     return {"content": [{"type": "text", "text": f"Learned and saved to {target.name}. Active on the next turn."}]}
 
 
+# ── Background process tool ───────────────────────────────────────────────────
+
+_bg_jobs: dict[str, asyncio.subprocess.Process] = {}
+
+@sdk.tool(
+    name="run_bg",
+    description=(
+        "Run a long shell command in the background without blocking the turn. "
+        "Returns immediately with a job_id. "
+        "Use 'job_wait' to block until it finishes and get its output, or "
+        "'job_status' to poll without blocking. "
+        "Ideal for: npm run build, npm install, long tests, server starts. "
+        "cwd: working directory for the command (default: project root)."
+    ),
+    input_schema={"command": str, "cwd": str},
+)
+async def tool_run_bg(args: dict) -> dict:
+    command = args.get("command", "").strip()
+    cwd = args.get("cwd", "").strip() or str(ROOT)
+    if not command:
+        return {"content": [{"type": "text", "text": "command is required."}], "is_error": True}
+
+    job_id = f"job_{int(asyncio.get_event_loop().time() * 1000) % 100000}"
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd=cwd,
+        )
+        _bg_jobs[job_id] = proc
+        logger.info("run_bg [%s] PID=%d: %s", job_id, proc.pid, command)
+        return {"content": [{"type": "text", "text": f"Started {job_id} (PID {proc.pid}). Use job_wait or job_status to check."}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"Failed to start: {e}"}], "is_error": True}
+
+
+@sdk.tool(
+    name="job_wait",
+    description=(
+        "Wait for a background job to finish and return its full output. "
+        "Blocks until the job completes (use for jobs expected to finish in seconds). "
+        "For jobs that take minutes, use job_status + send_message instead."
+    ),
+    input_schema={"job_id": str, "timeout": int},
+)
+async def tool_job_wait(args: dict) -> dict:
+    job_id = args.get("job_id", "").strip()
+    timeout = int(args.get("timeout") or 120)
+    proc = _bg_jobs.get(job_id)
+    if not proc:
+        return {"content": [{"type": "text", "text": f"Job {job_id!r} not found."}], "is_error": True}
+    try:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        output = stdout.decode(errors="replace").strip() if stdout else ""
+        exit_code = proc.returncode
+        _bg_jobs.pop(job_id, None)
+        status = "✓ exited 0" if exit_code == 0 else f"✗ exited {exit_code}"
+        tail = output[-3000:] if len(output) > 3000 else output
+        return {"content": [{"type": "text", "text": f"{status}\n\n{tail}"}]}
+    except asyncio.TimeoutError:
+        return {"content": [{"type": "text", "text": f"Timed out after {timeout}s — job still running. Use job_status to check."}]}
+
+
+@sdk.tool(
+    name="job_status",
+    description=(
+        "Check whether a background job is still running or has finished. "
+        "If finished, returns exit code and last 2000 chars of output. "
+        "Non-blocking — returns immediately."
+    ),
+    input_schema={"job_id": str},
+)
+async def tool_job_status(args: dict) -> dict:
+    job_id = args.get("job_id", "").strip()
+    proc = _bg_jobs.get(job_id)
+    if not proc:
+        return {"content": [{"type": "text", "text": f"Job {job_id!r} not found (may have already completed)."}]}
+    if proc.returncode is None:
+        return {"content": [{"type": "text", "text": f"Job {job_id} is still running (PID {proc.pid})."}]}
+    # Finished — drain output
+    try:
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
+    except (asyncio.TimeoutError, Exception):
+        stdout = b""
+    output = stdout.decode(errors="replace").strip() if stdout else ""
+    exit_code = proc.returncode
+    _bg_jobs.pop(job_id, None)
+    status = "✓ exited 0" if exit_code == 0 else f"✗ exited {exit_code}"
+    tail = output[-2000:] if len(output) > 2000 else output
+    return {"content": [{"type": "text", "text": f"{status}\n\n{tail}"}]}
+
+
 # ── Proactive messaging tools ─────────────────────────────────────────────────
 
 @sdk.tool(
@@ -681,6 +775,7 @@ _memory_mcp = sdk.create_sdk_mcp_server(
         tool_send_message, tool_schedule_once,
         tool_self_edit,
         tool_learn,
+        tool_run_bg, tool_job_wait, tool_job_status,
     ],
 )
 

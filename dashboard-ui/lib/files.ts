@@ -18,6 +18,7 @@ const CONNECTOR_REGISTRY: Record<string, string> = {
   sqlite:       'SQLite — query local SQLite databases',
   stripe:       'Stripe — payments, customers, invoices, subscriptions',
   jira:         'Jira — issues, sprints, projects, boards',
+  playwright:   'Playwright — browser automation: navigate, screenshot, click, fill forms, scrape',
 }
 
 function readClaudeJson(): Record<string, unknown> {

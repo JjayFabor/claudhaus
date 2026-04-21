@@ -127,6 +127,11 @@ REGISTRY: dict[str, dict] = {
         },
         "description": "Jira — issues, projects, sprints, boards",
     },
+    "playwright": {
+        "command": "npx -y @playwright/mcp@latest",
+        "env_vars": {},
+        "description": "Playwright — browser automation: navigate, screenshot, click, fill forms, scrape",
+    },
 }
 
 

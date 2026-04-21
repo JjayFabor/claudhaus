@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.14.0] — Playwright + Background Jobs — 2026-04-21
+
+### Added
+- `playwright` connector — browser automation via `@playwright/mcp`; navigate, screenshot, click, fill forms, scrape JS-rendered pages; installable via chat with no credentials required
+- `run_bg` SDK tool — starts a shell command in the background, returns a job_id immediately; ideal for `npm run build`, `npm install`, long tests
+- `job_wait` SDK tool — blocks until a background job finishes and returns full output (with timeout)
+- `job_status` SDK tool — non-blocking poll: check if a job is still running or get its exit code and output tail
+- Browser usage guidance in `CLAUDE.personal.md` — when/how to use Playwright tools, UI verification workflow, always close browser when done
+- Background job guidance in `CLAUDE.personal.md` — use `run_bg` for long commands, pattern for npm builds with `job_wait` + `schedule_once` fallback
+
+### Changed
+- `dashboard-ui/lib/files.ts` — Playwright added to connector registry so dashboard shows it
+
 ## [0.13.0] — Dashboard (Next.js) — 2026-04-21
 
 ### Added
