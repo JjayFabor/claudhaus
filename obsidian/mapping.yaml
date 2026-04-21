@@ -1,0 +1,12 @@
+# Obsidian vault folder access config — edit for Phase 5
+# main:
+#   read:
+#     - Dev/
+#     - Projects/
+#     - Infrastructure/
+#     - Research/
+#     - Ideas/
+#   write:
+#     - Research/
+#     - Ideas/
+#     - Dev/

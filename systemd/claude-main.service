@@ -1,0 +1,22 @@
+[Unit]
+Description=Claude Command Center — Main bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/JjayFiles/claude-command-center
+ExecStart=%h/JjayFiles/claude-command-center/.venv/bin/python agents/main/agent.py
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Prevent accidental metered billing — auth via ~/.claude/.credentials.json
+Environment=ANTHROPIC_API_KEY=
+
+StandardOutput=append:%h/JjayFiles/claude-command-center/logs/main.log
+StandardError=append:%h/JjayFiles/claude-command-center/logs/main.log
+
+[Install]
+WantedBy=default.target

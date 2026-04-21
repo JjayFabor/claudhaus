@@ -1,0 +1,32 @@
+services:
+  main:
+    build: .
+    restart: unless-stopped
+    volumes:
+      # REQUIRED: Claude CLI auth — without this the bot cannot call Claude
+      - ~/.claude:/root/.claude:ro
+      - ./data:/app/data
+      - ./workspaces:/app/workspaces
+      - ./logs:/app/logs
+      - ./agents/shared:/app/agents/shared
+    env_file: .env
+    environment:
+      # Prevent accidental metered billing — auth via ~/.claude volume
+      ANTHROPIC_API_KEY: ""
+
+  dashboard:
+    build: .
+    restart: unless-stopped
+    command: python -m uvicorn dashboard.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ~/.claude:/root/.claude:ro
+      - ./data:/app/data
+      - ./workspaces:/app/workspaces
+      - ./logs:/app/logs
+    env_file: .env
+    environment:
+      ANTHROPIC_API_KEY: ""
+    depends_on:
+      - main

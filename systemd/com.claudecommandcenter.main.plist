@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claudecommandcenter.main</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>cd "$HOME/JjayFiles/claude-command-center" &amp;&amp; .venv/bin/python agents/main/agent.py</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Prevent accidental metered billing -->
+        <key>ANTHROPIC_API_KEY</key>
+        <string></string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>~/JjayFiles/claude-command-center/logs/main.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>~/JjayFiles/claude-command-center/logs/main.log</string>
+</dict>
+</plist>

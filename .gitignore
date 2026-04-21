@@ -1,0 +1,33 @@
+# Credentials
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Data and logs
+logs/
+data/*.db
+data/*.db-journal
+
+# Workspaces (contain personal memory files)
+workspaces/
+
+# Personal instruction overrides
+**/CLAUDE.personal.md
+
+# Personal soul files
+agents/shared/USER_PROFILE.md
+agents/shared/BUSINESS_CONTEXT.md
+agents/shared/HOUSE_RULES.md
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp
