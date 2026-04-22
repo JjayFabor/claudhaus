@@ -31,6 +31,7 @@ export function extractHeadings(md: string): Heading[] {
     const id = text
       .toLowerCase()
       .replace(/[^\w\s-]/g, '')
+      .replace(/_/g, '-')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
@@ -67,6 +68,8 @@ export function getAllSlugs(section: 'docs' | 'api'): string[][] {
 
 export function getDocMeta(section: 'docs' | 'api', slug: string[]): DocMeta | null {
   const filePath = path.join(CONTENT_ROOT, section, ...slug) + '.mdx'
+  const resolved = path.resolve(filePath)
+  if (!resolved.startsWith(CONTENT_ROOT + path.sep)) return null
   if (!fs.existsSync(filePath)) return null
 
   const raw = fs.readFileSync(filePath, 'utf-8')
