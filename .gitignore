@@ -50,3 +50,10 @@ agents/shared/HOUSE_RULES.md
 dashboard-ui/.next/
 dashboard-ui/node_modules/
 dashboard-ui/tsconfig.tsbuildinfo
+
+# Site (public Next.js static export)
+site/.next/
+site/out/
+site/node_modules/
+site/next-env.d.ts
+site/package-lock.json

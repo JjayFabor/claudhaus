@@ -4,3 +4,4 @@ out/
 public/pagefind/
 *.tsbuildinfo
 .env*.local
+next-env.d.ts
