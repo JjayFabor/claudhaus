@@ -1327,6 +1327,74 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+async def cmd_share(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    /share @username <content>   or   /share Name: <content>
+
+    Shares content with the resolved user and sends them a push notification.
+    Must only be called after is_allowed returns True.
+    """
+    if not update.message or not is_allowed(update):
+        return
+    upsert_user(update)
+
+    chat_id = update.effective_chat.id
+    text = update.message.text or ""
+
+    # Strip the /share command prefix
+    body = text.removeprefix("/share").strip()
+    if not body:
+        await update.message.reply_text(
+            "Usage: /share @username <content>\n"
+            "Example: /share @jay here's what we decided about the API"
+        )
+        return
+
+    # Parse target: @username or "Name:" prefix
+    m = re.match(r"^(@\S+|[\w][\w\s]*?)[:]\s+(.+)$", body, re.DOTALL)
+    if not m:
+        # Try "@handle content" form (no colon)
+        m2 = re.match(r"^(@\S+)\s+(.+)$", body, re.DOTALL)
+        if not m2:
+            await update.message.reply_text(
+                "Usage: /share @username <content>  or  /share Name: <content>"
+            )
+            return
+        target_raw, content = m2.group(1), m2.group(2).strip()
+    else:
+        target_raw, content = m.group(1), m.group(2).strip()
+
+    try:
+        result = db_resolve_user(DB_PATH, target_raw)
+    except ValueError as e:
+        await update.message.reply_text(f"Could not resolve user: {e}")
+        return
+
+    if result is None:
+        await update.message.reply_text(
+            f"No user found matching '{target_raw}'. "
+            "They need to have messaged the bot at least once."
+        )
+        return
+
+    to_chat_id, to_name = result
+    if to_chat_id == chat_id:
+        await update.message.reply_text("You can't share context with yourself.")
+        return
+
+    from_name = update.effective_user.full_name or str(chat_id)
+    db_share_context(DB_PATH, from_chat_id=chat_id, to_chat_id=to_chat_id, content=content)
+
+    # Push notification to recipient
+    push_text = f"📤 <b>{html.escape(from_name)}</b> shared something with you:\n{html.escape(content)}"
+    try:
+        await context.bot.send_message(to_chat_id, push_text, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.warning("Could not push share notification to %d: %s", to_chat_id, e)
+
+    await update.message.reply_text(f"Shared with {to_name or str(to_chat_id)}.")
+
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.photo:
         return
@@ -1625,6 +1693,7 @@ def main() -> None:
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("restart", cmd_restart))
+    app.add_handler(CommandHandler("share", cmd_share))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
