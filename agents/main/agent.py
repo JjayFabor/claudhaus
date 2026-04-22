@@ -1400,6 +1400,80 @@ async def cmd_share(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f"Shared with {to_name or str(to_chat_id)}.{notice}")
 
 
+async def cmd_revoke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    /revoke @username <content or label>
+
+    Soft-deletes matching shared context and notifies recipient.
+    """
+    if not update.message or not is_allowed(update):
+        return
+    upsert_user(update)
+
+    chat_id = update.effective_chat.id
+    text = update.message.text or ""
+    body = re.sub(r"^/revoke(?:@\S+)?", "", text, count=1).strip()
+
+    if not body:
+        await update.message.reply_text(
+            "Usage: /revoke @username <content hint>\n"
+            "Example: /revoke @jay API decision"
+        )
+        return
+
+    m = re.match(r"^(@\S+|[\w][\w\s]*?)[:\s]\s*(.+)$", body, re.DOTALL)
+    if not m:
+        await update.message.reply_text(
+            "Usage: /revoke @username <content hint>"
+        )
+        return
+
+    target_raw, content_hint = m.group(1), m.group(2).strip()
+
+    try:
+        result = db_resolve_user(DB_PATH, target_raw)
+    except ValueError:
+        await update.message.reply_text(
+            f"'{target_raw}' matches multiple users. Use a more specific name or @username."
+        )
+        return
+
+    if result is None:
+        await update.message.reply_text(f"No user found matching '{target_raw}'.")
+        return
+
+    to_chat_id, to_name = result
+    from_name = (update.effective_user.full_name if update.effective_user else None) or str(chat_id)
+
+    revoked_ids = db_revoke_shared(
+        DB_PATH, from_chat_id=chat_id, to_chat_id=to_chat_id, content_hint=content_hint
+    )
+
+    if not revoked_ids:
+        await update.message.reply_text(
+            f"No matching shared context found for '{content_hint}'."
+        )
+        return
+
+    # Notify recipient
+    snippet = content_hint[:80]
+    notif = (
+        f"🚫 <b>{html.escape(from_name)}</b> revoked shared context: "
+        f"<i>{html.escape(snippet)}</i>"
+    )
+    push_failed = False
+    try:
+        await context.bot.send_message(to_chat_id, notif, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.warning("Could not send revoke notification to %d: %s", to_chat_id, e)
+        push_failed = True
+
+    notice = " (could not send them a notification)" if push_failed else ""
+    await update.message.reply_text(
+        f"Revoked {len(revoked_ids)} item(s) shared with {to_name or str(to_chat_id)}.{notice}"
+    )
+
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.photo:
         return
@@ -1699,6 +1773,7 @@ def main() -> None:
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("restart", cmd_restart))
     app.add_handler(CommandHandler("share", cmd_share))
+    app.add_handler(CommandHandler("revoke", cmd_revoke))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
