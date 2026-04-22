@@ -1478,6 +1478,14 @@ async def cmd_revoke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     )
 
 
+async def cmd_shared(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Pull all shared context on demand."""
+    if not update.message or not is_allowed(update):
+        return
+    upsert_user(update)
+    await _handle_pull(update, context)
+
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.photo:
         return
@@ -1635,6 +1643,69 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         _do_restart()
 
 
+_PULL_PATTERNS = [
+    r"shared with me",
+    r"what did .{1,30} share",
+    r"show shared",
+    r"shared context",
+    r"anything shared",
+]
+_PULL_RE = re.compile("|".join(_PULL_PATTERNS), re.IGNORECASE)
+
+
+def _is_pull_request(text: str) -> bool:
+    return bool(_PULL_RE.search(text))
+
+
+async def _handle_pull(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Display all shared context for this user and inject it into their Claude session."""
+    chat_id = update.effective_chat.id
+    items = db_list_shared(DB_PATH, to_chat_id=chat_id)
+
+    if not items:
+        await update.message.reply_text("Nothing has been shared with you yet.")
+        return
+
+    # Group by sender
+    grouped: dict[str, list[dict]] = {}
+    for item in items:
+        grouped.setdefault(item["from_name"], []).append(item)
+
+    lines = ["📥 <b>Shared with you:</b>\n"]
+    for from_name, sender_items in grouped.items():
+        lines.append(f"<b>From {html.escape(from_name)}</b> ({len(sender_items)} item(s))")
+        for item in sender_items:
+            date_str = item["shared_at"][:10]
+            lines.append(f"  • <i>({date_str})</i> {html.escape(item['content'])}")
+        lines.append("")
+
+    formatted = "\n".join(lines).strip()
+    await update.message.reply_text(formatted, parse_mode=ParseMode.HTML)
+
+    # Inject into Claude session so the AI knows about it
+    note = format_shared_note(items)
+    inject_prompt = (
+        f"[System: The user just pulled their shared context. Inject into your awareness.]\n"
+        f"{note}\n"
+        f"---\n\n"
+        f"The user asked to see their shared context. I've shown them the list above. "
+        f"Acknowledge briefly."
+    )
+    await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    typing_task = asyncio.create_task(_keep_typing(context, chat_id))
+    try:
+        reply = await run_claude(inject_prompt, chat_id)
+    finally:
+        typing_task.cancel()
+
+    if reply and reply != "(no response)":
+        for chunk in chunk_text(md_to_html(reply)):
+            try:
+                await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+            except Exception:
+                await update.message.reply_text(chunk)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.text:
         return
@@ -1659,6 +1730,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_text = update.message.text
     db_log(chat_id, "user", user_text)
     _flush_mgr.record(chat_id, user_text)
+
+    # Handle pull requests before passing to Claude
+    if _is_pull_request(user_text):
+        await _handle_pull(update, context)
+        return
 
     # Fire flush turn if we're near the context limit (transparent to user)
     await maybe_flush(chat_id)
@@ -1778,6 +1854,7 @@ def main() -> None:
     app.add_handler(CommandHandler("restart", cmd_restart))
     app.add_handler(CommandHandler("share", cmd_share))
     app.add_handler(CommandHandler("revoke", cmd_revoke))
+    app.add_handler(CommandHandler("shared", cmd_shared))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
