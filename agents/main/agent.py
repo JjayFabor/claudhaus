@@ -1186,9 +1186,21 @@ def chunk_text(text: str, max_len: int = TG_MAX_CHARS) -> list[str]:
 
 # ── Claude query ───────────────────────────────────────────────────────────────
 async def run_claude(prompt: str, chat_id: int, silent: bool = False) -> str:
+    """Collect all streamed text blocks into one string. Use for non-interactive callers."""
+    parts = []
+    async for text in stream_claude(prompt, chat_id, silent=silent):
+        parts.append(text)
+    reply = "\n\n".join(parts).strip()
+    if silent and reply == "NO_REPLY":
+        return ""
+    return reply or "(no response)"
+
+
+async def stream_claude(prompt: str, chat_id: int, silent: bool = False):
     """
-    Run one Claude turn. Returns the final text reply.
-    silent=True suppresses NO_REPLY responses (used for flush turns).
+    Async generator — yields each assistant text block as Claude produces it.
+    Use in interactive handlers for progressive Telegram delivery.
+    silent=True suppresses NO_REPLY (used for flush turns).
     """
     _current_chat_id.set(chat_id)
 
@@ -1218,8 +1230,8 @@ async def run_claude(prompt: str, chat_id: int, silent: bool = False) -> str:
         allowed_tools=_build_allowed_tools(),
     )
 
-    reply_parts: list[str] = []
     new_session_id: Optional[str] = None
+    reply_parts: list[str] = []
 
     try:
         async for event in sdk.query(prompt=prompt, options=options):
@@ -1230,6 +1242,7 @@ async def run_claude(prompt: str, chat_id: int, silent: bool = False) -> str:
                 )
                 if msg_text.strip():
                     reply_parts.append(msg_text)
+                    yield msg_text
                 if event.session_id:
                     new_session_id = event.session_id
             elif isinstance(event, sdk.ResultMessage):
@@ -1239,24 +1252,23 @@ async def run_claude(prompt: str, chat_id: int, silent: bool = False) -> str:
                     _log_usage(chat_id, event.usage, event.total_cost_usd)
     except sdk.CLINotFoundError:
         logger.error("claude CLI not found")
-        return "Error: claude CLI not found. Make sure `claude` is installed and authenticated."
+        yield "Error: claude CLI not found. Make sure `claude` is installed and authenticated."
+        return
     except sdk.CLIConnectionError as e:
         logger.error("Claude connection error: %s", e)
         db_delete_session(chat_id)
-        return "Connection error — session reset. Please try again."
+        yield "Connection error — session reset. Please try again."
+        return
     except Exception as e:
         logger.exception("Unexpected error from Claude: %s", e)
-        return f"Error: {e}"
+        yield f"Error: {e}"
+        return
 
     if new_session_id:
         db_save_session(chat_id, new_session_id)
 
-    reply = "\n\n".join(reply_parts).strip()
-
-    if silent and reply == "NO_REPLY":
-        return ""
-
-    return reply or "(no response)"
+    if silent and "\n\n".join(reply_parts).strip() == "NO_REPLY":
+        return
 
 
 # ── Pre-compaction flush ───────────────────────────────────────────────────────
@@ -1586,18 +1598,18 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     try:
-        reply = await run_claude(prompt, chat_id)
+        async for text in stream_claude(prompt, chat_id):
+            typing_task.cancel()
+            db_log(chat_id, "assistant", text)
+            _flush_mgr.record(chat_id, text)
+            for chunk in chunk_text(md_to_html(text)):
+                try:
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+                except Exception:
+                    await update.message.reply_text(chunk)
+            typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     finally:
         typing_task.cancel()
-
-    db_log(chat_id, "assistant", reply)
-    _flush_mgr.record(chat_id, reply)
-    formatted = md_to_html(reply)
-    for chunk in chunk_text(formatted):
-        try:
-            await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
-        except Exception:
-            await update.message.reply_text(chunk)
 
     if _restart_requested:
         await asyncio.sleep(1)
@@ -1630,18 +1642,18 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     try:
-        reply = await run_claude(f"[Voice message transcript]: {transcript}", chat_id)
+        async for text in stream_claude(f"[Voice message transcript]: {transcript}", chat_id):
+            typing_task.cancel()
+            db_log(chat_id, "assistant", text)
+            _flush_mgr.record(chat_id, text)
+            for chunk in chunk_text(md_to_html(text)):
+                try:
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+                except Exception:
+                    await update.message.reply_text(chunk)
+            typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     finally:
         typing_task.cancel()
-
-    db_log(chat_id, "assistant", reply)
-    _flush_mgr.record(chat_id, reply)
-    formatted = md_to_html(reply)
-    for chunk in chunk_text(formatted):
-        try:
-            await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
-        except Exception:
-            await update.message.reply_text(chunk)
 
     if _restart_requested:
         await asyncio.sleep(1)
@@ -1693,18 +1705,18 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     try:
-        reply = await run_claude(prompt, chat_id)
+        async for text in stream_claude(prompt, chat_id):
+            typing_task.cancel()
+            db_log(chat_id, "assistant", text)
+            _flush_mgr.record(chat_id, text)
+            for chunk in chunk_text(md_to_html(text)):
+                try:
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+                except Exception:
+                    await update.message.reply_text(chunk)
+            typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     finally:
         typing_task.cancel()
-
-    db_log(chat_id, "assistant", reply)
-    _flush_mgr.record(chat_id, reply)
-    formatted = md_to_html(reply)
-    for chunk in chunk_text(formatted):
-        try:
-            await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
-        except Exception:
-            await update.message.reply_text(chunk)
 
     if _restart_requested:
         await asyncio.sleep(1)
@@ -1821,19 +1833,21 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
 
     try:
-        reply = await run_claude(user_text, chat_id)
+        async for text in stream_claude(user_text, chat_id):
+            typing_task.cancel()
+
+            db_log(chat_id, "assistant", text)
+            _flush_mgr.record(chat_id, text)
+
+            for chunk in chunk_text(md_to_html(text)):
+                try:
+                    await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
+                except Exception:
+                    await update.message.reply_text(chunk)
+
+            typing_task = asyncio.create_task(_keep_typing(context, chat_id))
     finally:
         typing_task.cancel()
-
-    db_log(chat_id, "assistant", reply)
-    _flush_mgr.record(chat_id, reply)
-
-    formatted = md_to_html(reply)
-    for chunk in chunk_text(formatted):
-        try:
-            await update.message.reply_text(chunk, parse_mode=ParseMode.HTML)
-        except Exception:
-            await update.message.reply_text(chunk)
 
     if _restart_requested:
         await asyncio.sleep(1)
