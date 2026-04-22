@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-background: #ffffff;
+  --color-surface: #f8f8fc;
+  --color-border: #e4e4ef;
+  --color-text-primary: #0a0a0f;
+  --color-text-muted: #6b6b8a;
+  --color-accent: #5b4ee8;
+  --color-accent-hover: #7c6af7;
+  --color-code-bg: #f3f3fa;
+}
+
+.dark {
+  --color-background: #0a0a0f;
+  --color-surface: #111118;
+  --color-border: #1e1e2e;
+  --color-text-primary: #f0f0ff;
+  --color-text-muted: #6b6b8a;
+  --color-accent: #7c6af7;
+  --color-accent-hover: #9b8dff;
+  --color-code-bg: #0f0f1a;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.dot-grid {
+  background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
