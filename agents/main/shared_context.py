@@ -103,6 +103,7 @@ def db_share_context(
                VALUES (?, ?, ?, ?)""",
             (from_chat_id, to_chat_id, content, label),
         )
+        assert cur.lastrowid is not None, "INSERT into shared_context returned no rowid"
         return cur.lastrowid
 
 
@@ -136,15 +137,16 @@ def db_revoke_shared(
 ) -> list[int]:
     """
     Soft-delete shared items from from_chat_id to to_chat_id matching content_hint.
-    Matches by label (exact) or content substring. Returns list of revoked row ids.
+    Matches by label (exact, case-insensitive) or content substring. Returns list of revoked row ids.
     """
     hint_lower = content_hint.lower()
+    hint_safe = hint_lower.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     with sqlite3.connect(db_path) as con:
         rows = con.execute(
             """SELECT id FROM shared_context
                WHERE from_chat_id=? AND to_chat_id=? AND revoked=0
-                 AND (lower(label)=? OR lower(content) LIKE ?)""",
-            (from_chat_id, to_chat_id, hint_lower, f"%{hint_lower}%"),
+                 AND (lower(label)=? OR lower(content) LIKE ? ESCAPE '\\')""",
+            (from_chat_id, to_chat_id, hint_lower, f"%{hint_safe}%"),
         ).fetchall()
         ids = [r[0] for r in rows]
         if ids:
@@ -156,7 +158,7 @@ def db_revoke_shared(
 
 
 def db_list_shared(db_path: Path, to_chat_id: int) -> list[dict]:
-    """Return all non-revoked shared items for chat_id, newest first."""
+    """Return all non-revoked shared items for to_chat_id, grouped by sender, newest-first within each sender."""
     with sqlite3.connect(db_path) as con:
         con.row_factory = sqlite3.Row
         rows = con.execute(
