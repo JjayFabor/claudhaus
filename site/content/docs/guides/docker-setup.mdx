@@ -1,0 +1,49 @@
+---
+title: Docker Setup
+description: Running Delphi in a Docker container.
+---
+
+## Start the container
+
+```bash
+docker compose up -d
+```
+
+## Critical: the `~/.claude` volume mount
+
+Delphi authenticates via the Claude CLI (`~/.claude/.credentials.json`). The `docker-compose.yml` mounts your local `~/.claude` directory into the container. Without this mount, the CLI cannot authenticate and the bot will not start.
+
+<Danger>Do not remove the `~/.claude` volume mount from `docker-compose.yml`. The bot will fail to start without Claude CLI credentials.</Danger>
+
+## View logs
+
+```bash
+docker compose logs -f main
+```
+
+## Stop
+
+```bash
+docker compose down
+```
+
+## Rebuild after code changes
+
+```bash
+docker compose up -d --build
+```
+
+## Environment variables
+
+All `.env` variables work the same in Docker. The `docker-compose.yml` loads `.env` automatically via `env_file: .env`.
+
+## Volumes
+
+The compose file creates two volumes:
+
+| Mount | Purpose |
+|---|---|
+| `~/.claude:/root/.claude` | Claude CLI credentials (required) |
+| `./data:/app/data` | SQLite database persistence |
+| `./logs:/app/logs` | Log file persistence |
+| `./agents:/app/agents` | Skills, memory, config |

@@ -1,0 +1,43 @@
+---
+title: macOS Setup
+description: Running Delphi as a launchd agent on macOS.
+---
+
+## Copy the plist
+
+```bash
+cp systemd/com.claudecommandcenter.main.plist ~/Library/LaunchAgents/
+```
+
+## Load the agent
+
+```bash
+launchctl load ~/Library/LaunchAgents/com.claudecommandcenter.main.plist
+```
+
+## Verify it's running
+
+```bash
+launchctl list | grep claudecommandcenter
+```
+
+Expected: a line with `com.claudecommandcenter.main` and a PID (not `-`).
+
+## View logs
+
+Logs are written to `logs/main.log` in the project directory.
+
+## Unload (stop)
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.claudecommandcenter.main.plist
+```
+
+## Reload after config changes
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.claudecommandcenter.main.plist
+launchctl load   ~/Library/LaunchAgents/com.claudecommandcenter.main.plist
+```
+
+<Note>The plist uses your local Python path. If you installed Python with Homebrew or pyenv, verify the path in the plist matches `which python3`.</Note>

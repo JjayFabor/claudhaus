@@ -1,0 +1,38 @@
+---
+title: Prerequisites
+description: What you need installed before running Delphi.
+---
+
+## Required
+
+| Requirement | Version | Notes |
+|---|---|---|
+| Claude Code subscription | Active | Must be logged in via the `claude` CLI |
+| Python | 3.10+ | Run `python3 --version` to check |
+| Node.js | 18+ | Required by the Claude CLI and MCP servers |
+| git | Any | For cloning the repo |
+| Telegram account | — | To create a bot via BotFather |
+
+<Warning>
+**Personal use only.** Delphi runs under your personal Claude Code subscription and is intended solely for your own use. Do not expose it to clients, customers, or third parties — processing other people's requests through your personal subscription violates Anthropic's terms of service. If you need a multi-user or commercial setup, obtain an Anthropic API key and operate under Anthropic's Commercial Terms instead.
+</Warning>
+
+<Note>Do not set `ANTHROPIC_API_KEY` unless you intend to switch to metered API billing. By default, Delphi authenticates via your Claude Code subscription (`~/.claude/.credentials.json`). Setting that variable bypasses the subscription and charges per token against your API account.</Note>
+
+## Verify your environment
+
+Run all four commands — all should succeed before proceeding:
+
+```bash
+claude --version    # e.g. 1.2.3
+python3 --version   # Python 3.10.x or higher
+node --version      # v18.x or higher
+git --version       # git version 2.x
+```
+
+## Optional
+
+| Optional | When needed |
+|---|---|
+| OpenAI API key | Only if `WHISPER_PROVIDER=openai` for voice transcription |
+| Discord bot token | Only if you want a Discord interface alongside Telegram |

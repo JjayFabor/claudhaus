@@ -1,0 +1,45 @@
+---
+title: Skills
+description: Reusable workflows injected into the agent's system prompt.
+---
+
+Skills are Markdown files stored in `agents/main/skills/`. On each turn, the agent injects relevant skills into its system prompt — giving it domain knowledge, formatting rules, or step-by-step workflows without needing a restart.
+
+## Two loading modes
+
+**Always-inject** (default): skills without frontmatter are included on every turn.
+
+**Trigger-based**: skills with frontmatter are only injected when a trigger word appears in the message.
+
+```markdown
+---
+always: false
+triggers: [backlog, report, schedule]
+description: Daily backlog report formatting
+---
+
+# Morning Backlog Report
+
+When the user asks for a backlog report, format it as...
+```
+
+## Managing skills via chat
+
+```
+"create a skill called morning-report that formats daily standup notes"
+"list all skills"
+"read the morning-report skill"
+"delete the morning-report skill"
+```
+
+Or use the tools directly: `skill_list`, `skill_read`, `skill_write`, `skill_delete`.
+
+## Hot-loaded
+
+Skills take effect immediately — no restart needed. The agent reads the file on the next turn.
+
+## When to use a skill
+
+- You've explained the same workflow to the agent more than once
+- You want consistent formatting for a specific type of output
+- You have domain knowledge the agent should always have available

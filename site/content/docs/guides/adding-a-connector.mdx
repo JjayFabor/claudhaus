@@ -1,0 +1,54 @@
+---
+title: Adding a Connector
+description: How to connect Delphi to external services via MCP.
+---
+
+Connectors give the agent access to external services. The entire setup happens via chat — no config files.
+
+## The flow
+
+**1. Ask the agent to add the connector:**
+
+```
+"add the GitHub connector"
+```
+
+**2. The agent calls `connector_info` and tells you what credentials are needed:**
+
+```
+To connect GitHub I need:
+- GITHUB_TOKEN: a Personal Access Token with repo scope
+  Get one at: https://github.com/settings/tokens
+```
+
+**3. Provide the credentials:**
+
+```
+"here's my GitHub token: ghp_xxxxxxxxxxxx"
+```
+
+**4. The agent calls `connector_add` and restarts.**
+
+<Warning>The bot goes offline for a few seconds during the restart. This is normal.</Warning>
+
+**5. After restart, the connector is live.**
+
+The agent now has access to GitHub tools — creating PRs, reading issues, searching code, etc.
+
+## Common connectors
+
+| Service | What you need |
+|---|---|
+| GitHub | Personal Access Token (repo scope) |
+| HubSpot | Private App token |
+| Slack | Bot token + App token |
+| Notion | Integration token |
+| Google Drive | OAuth credentials |
+
+## Removing a connector
+
+```
+"remove the GitHub connector"
+```
+
+The bot restarts again after removal.

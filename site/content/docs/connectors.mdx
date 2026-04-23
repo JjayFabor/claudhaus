@@ -1,0 +1,40 @@
+---
+title: Connectors
+description: Self-installing MCP integrations for external services.
+---
+
+Connectors are MCP (Model Context Protocol) servers that give the agent access to external services — GitHub, HubSpot, Slack, Notion, and more.
+
+## Adding a connector
+
+Just ask the agent:
+
+```
+"add the GitHub connector"
+"connect to HubSpot"
+"I want to use Slack"
+```
+
+The agent:
+1. Calls `connector_info` to find out what credentials are required
+2. Tells you exactly what to provide and where to get it
+3. Calls `connector_add` with your credentials
+4. Restarts automatically
+
+<Warning>The bot goes offline briefly during the restart after adding a connector. This is expected — it takes a few seconds.</Warning>
+
+## Available connectors
+
+Delphi supports any MCP server. Common ones include GitHub, HubSpot, Slack, Notion, Google Drive, and custom servers you build yourself.
+
+## After connecting
+
+The connector's tools become available immediately in the next session. The agent knows what tools each connector provides and uses them naturally in conversation.
+
+## Removing a connector
+
+```
+"remove the GitHub connector"
+```
+
+The bot restarts again after removal.
