@@ -1,0 +1,60 @@
+---
+title: Writing a Skill
+description: How to create reusable workflows for your agent.
+---
+
+A skill is a Markdown file that gets injected into the agent's system prompt. Write one when you've explained the same workflow more than once, or when you want consistent formatting for a specific type of output.
+
+## Creating via chat
+
+The easiest way:
+
+```
+"create a skill called morning-report: when I ask for a morning report,
+ pull open GitHub PRs, format them as a numbered list with assignee and
+ age in days, then summarize blockers"
+```
+
+The agent writes the skill file and confirms. It takes effect immediately.
+
+## Skill file format
+
+Skills live in `agents/main/skills/`. Each is a Markdown file:
+
+```markdown
+# Morning Report
+
+When the user asks for a morning report:
+1. Call subagent_run(name="github-reader", task="list open PRs with assignee and age")
+2. Format the results as a numbered list
+3. Identify any PRs older than 3 days as blockers
+4. End with a one-line summary
+```
+
+## Trigger-based skills (load on demand)
+
+Add frontmatter to only inject the skill when a trigger word appears:
+
+```markdown
+---
+always: false
+triggers: [morning report, standup, daily summary]
+description: Morning standup report formatting
+---
+
+# Morning Report
+...
+```
+
+This keeps the system prompt lean — the skill is only loaded when relevant.
+
+## Managing skills
+
+```
+skill_list()                    # see all skills
+skill_read(name="morning-report")  # read a skill
+skill_write(name="morning-report", content="...")  # create or update
+skill_delete(name="morning-report")  # remove
+```
+
+Or just ask the agent in plain language.

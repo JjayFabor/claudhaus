@@ -1,0 +1,58 @@
+---
+title: Connecting Telegram
+description: Create a Telegram bot and connect it to Claudhaus.
+---
+
+## 1. Create a bot via BotFather
+
+Open Telegram and search for [@BotFather](https://t.me/BotFather). Send:
+
+```
+/newbot
+```
+
+Follow the prompts — choose a name and a username (must end in `bot`). BotFather replies with your bot token:
+
+```
+Use this token to access the HTTP API:
+7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+## 2. Add the token to `.env`
+
+```bash
+TELEGRAM_BOT_TOKEN=7123456789:AAHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+## 3. Start the bot
+
+```bash
+source .venv/bin/activate
+python agents/main/agent.py
+```
+
+## 4. Find your user ID
+
+Open Telegram and send your bot `/whoami`. It replies:
+
+```
+Your chat ID: 123456789
+Your user ID: 123456789
+Username: @yourhandle
+```
+
+## 5. Allow yourself access
+
+Add your user ID to `.env`:
+
+```bash
+TELEGRAM_ALLOWED_USER_IDS=123456789
+```
+
+Restart the bot. You can now send it messages and it will respond.
+
+## 6. Test it
+
+Send `/start` — the bot should greet you. Send "what can you do?" to explore its capabilities.
+
+<Note>Only user IDs in `TELEGRAM_ALLOWED_USER_IDS` can interact with the bot. Anyone else gets no response.</Note>

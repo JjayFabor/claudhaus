@@ -1,0 +1,43 @@
+---
+title: Linux Setup
+description: Running Claudhaus as a systemd user service on Linux.
+---
+
+## Install systemd units
+
+```bash
+bash scripts/install-systemd.sh
+```
+
+This script:
+1. Copies unit files to `~/.config/systemd/user/`
+2. Runs `loginctl enable-linger` so units survive logout
+3. Starts `claude-main.service`
+4. Enables nightly backup (`claude-backup.timer`) and dreaming (`claude-dreaming.timer`) timers
+
+## Verify the service is running
+
+```bash
+systemctl --user status claude-main.service
+```
+
+Expected: `active (running)`.
+
+## View logs
+
+```bash
+journalctl --user -u claude-main.service -f
+```
+
+## Restart after config changes
+
+```bash
+systemctl --user restart claude-main.service
+```
+
+## Enable on boot (if not done by the install script)
+
+```bash
+loginctl enable-linger $USER
+systemctl --user enable claude-main.service
+```

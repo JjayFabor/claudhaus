@@ -1,0 +1,50 @@
+---
+title: WSL2 Setup
+description: Running Claudhaus persistently on WSL2.
+---
+
+WSL2 can shut down idle instances, which kills your bot. Two settings prevent this.
+
+## 1. Enable systemd
+
+Edit `/etc/wsl.conf` (create it if it doesn't exist):
+
+```ini
+[boot]
+systemd=true
+```
+
+Restart WSL: in PowerShell, run `wsl --shutdown` then reopen your WSL terminal.
+
+## 2. Disable idle timeout
+
+Create or edit `~/.wslconfig` (in your Windows home directory, e.g. `C:\Users\you\.wslconfig`):
+
+```ini
+[wsl2]
+vmIdleTimeout=-1
+```
+
+Restart WSL again.
+
+## 3. Install systemd units
+
+```bash
+bash scripts/install-systemd.sh
+```
+
+This copies all unit files, enables linger (so units survive logout), starts `claude-main.service`, and enables the nightly backup and dreaming timers.
+
+## 4. Verify
+
+```bash
+systemctl --user status claude-main.service
+```
+
+Expected: `active (running)`.
+
+## 5. View logs
+
+```bash
+journalctl --user -u claude-main.service -f
+```
