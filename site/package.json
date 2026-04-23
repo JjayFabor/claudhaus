@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "npx pagefind --site out --output-path public/pagefind",
+    "postbuild": "npx pagefind --site out --output-path out/pagefind",
     "start": "npx serve out",
     "lint": "next lint",
     "test": "vitest run"
