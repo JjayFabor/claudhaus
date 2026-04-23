@@ -23,6 +23,7 @@ export default function Search() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const scriptLoadedRef = useRef(false)
 
   // Keyboard shortcut
   useEffect(() => {
@@ -45,7 +46,8 @@ export default function Search() {
 
   // Lazy-load Pagefind script
   useEffect(() => {
-    if (open && !window.pagefind) {
+    if (open && !scriptLoadedRef.current) {
+      scriptLoadedRef.current = true
       const script = document.createElement('script')
       script.src = '/pagefind/pagefind.js'
       script.type = 'module'
@@ -83,6 +85,9 @@ export default function Search() {
           onClick={() => setOpen(false)}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search"
             className="w-full max-w-xl bg-surface border border-border rounded-xl shadow-2xl overflow-hidden mx-4"
             onClick={e => e.stopPropagation()}
           >
