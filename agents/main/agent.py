@@ -88,12 +88,23 @@ logger = logging.getLogger("main")
 load_dotenv(ROOT / ".env")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN_MAIN"]
+_bot_token = os.getenv("TELEGRAM_BOT_TOKEN_MAIN")
+if not _bot_token:
+    raise SystemExit(
+        "ERROR: TELEGRAM_BOT_TOKEN_MAIN is not set in .env. "
+        "Create a bot via @BotFather and add the token to your .env file."
+    )
+BOT_TOKEN: str = _bot_token
 
 _raw_user_ids = os.getenv("TELEGRAM_ALLOWED_USER_IDS", "")
 ALLOWED_USER_IDS: set[int] = {
     int(x.strip()) for x in _raw_user_ids.split(",") if x.strip()
 }
+if not ALLOWED_USER_IDS:
+    logger.warning(
+        "TELEGRAM_ALLOWED_USER_IDS is empty — all incoming messages will be rejected. "
+        "Add your Telegram user ID to .env to allow access."
+    )
 
 _raw_chat_ids = os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "")
 ALLOWED_CHAT_IDS: set[int] = {
