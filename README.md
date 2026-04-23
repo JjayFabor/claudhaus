@@ -1,31 +1,9 @@
-# claudhaus
+# Delphi
 
 > A personal AI command center built on the Claude Agent SDK.  
-> The vibe-coded, self-hosted alternative to OpenClaw — built for one person, not a team.
+> Built for one person — shaped to your role, connected to your tools, and getting smarter every conversation.
 
-Send a message from your phone. Get your own AI agent on the other end — shaped to your role, connected to your tools, and getting smarter every conversation.
-
----
-
-## vs OpenClaw
-
-[OpenClaw](https://docs.openclaw.ai) is a multi-provider AI gateway: install it, configure channels and providers via config files, get a dashboard. It's designed to be a general-purpose router between messaging platforms and AI models.
-
-**Claudhaus takes the same idea and rebuilds it from scratch on the Claude Agent SDK:**
-
-| | OpenClaw | Claudhaus |
-|---|---|---|
-| Model | Multi-provider (Anthropic, OpenAI, Google…) | Claude-native, Claude Agent SDK |
-| Setup | Config files + dashboard | One Python file, chat-driven |
-| Memory | None built-in | BM25 search over Markdown files, daily notes, long-term MEMORY.md |
-| Integrations | Config-file plugins | Self-installing MCP connectors — just ask the bot |
-| Skills | Static plugins | Teachable via chat, hot-loaded, no restart |
-| Sub-agents | Not built-in | Spawnable via chat with own workspaces and tool sets |
-| Self-improvement | No | Main edits its own source code, syntax-checks, restarts |
-| Target | Teams, multi-user | One person, personal ops |
-| Philosophy | Gateway and router | A person, not a pipeline |
-
-Claudhaus is what you build when you want one Claude agent that knows you, learns your workflows, connects to your tools, and gets smarter every day — not a dashboard you configure.
+Send a message from your phone. Get your own AI agent on the other end.
 
 ---
 
@@ -52,8 +30,8 @@ Everything new — connectors, skills, sub-agents — is added by chatting with 
 ## Quick start
 
 ```bash
-git clone https://github.com/JjayFabor/claudhaus.git
-cd claudhaus
+git clone https://github.com/JjayFabor/delphi.git
+cd delphi
 python3 scripts/setup.py
 ```
 
@@ -114,7 +92,7 @@ At startup, if `CLAUDE.personal.md` exists it's used; otherwise `CLAUDE.md`. The
 
 ## Make it yours
 
-Claudhaus ships with a generic agent called "Main." The setup wizard creates your personal version:
+Delphi ships with a generic agent called "Main." The setup wizard creates your personal version:
 
 ```bash
 python3 scripts/setup.py
@@ -315,8 +293,8 @@ systemctl --user start claude-dashboard.service
 | `DREAMING_ENABLED` | `false` | Nightly memory consolidation sweep |
 | `DREAMING_LOOKBACK_DAYS` | `30` | Days of notes to sweep |
 | `DREAMING_PROMOTION_THRESHOLD` | `0.6` | Score threshold for DREAMS.md candidates |
-| `DASHBOARD_PORT` | `8000` | Dashboard listen port (not yet built) |
-| `OBSIDIAN_VAULT_PATH` | — | Absolute path to Obsidian vault (not yet built) |
+| `DASHBOARD_PORT` | `8000` | Dashboard listen port |
+| `OBSIDIAN_VAULT_PATH` | — | Absolute path to Obsidian vault |
 
 ---
 
@@ -375,11 +353,11 @@ Add their user IDs to `TELEGRAM_ALLOWED_USER_IDS`. Each Telegram chat gets its o
 
 ## Legal & compliance
 
-**Claudhaus is an independent open-source project. It is not affiliated with, endorsed by, or supported by Anthropic.**
+**Delphi is an independent open-source project. It is not affiliated with, endorsed by, or supported by Anthropic.**
 
 ### You must comply with Anthropic's terms
 
-Using Claudhaus requires a valid Claude Code subscription or Anthropic API key. By using this software you agree to:
+Using Delphi requires a valid Claude Code subscription or Anthropic API key. By using this software you agree to:
 
 - [Anthropic Terms of Service](https://www.anthropic.com/legal/consumer-terms)
 - [Anthropic Usage Policy](https://www.anthropic.com/legal/usage-policy)
@@ -389,15 +367,15 @@ You are solely responsible for obtaining and maintaining valid credentials, and 
 
 ### `bypassPermissions` mode
 
-Claudhaus runs the Claude agent with `permission_mode="bypassPermissions"`, which means the agent can execute shell commands, read and write files, and call external APIs without per-action prompts. **Only run Claudhaus on machines you control and trust.** You are responsible for the actions taken by your agent.
+Delphi runs the Claude agent with `permission_mode="bypassPermissions"`, which means the agent can execute shell commands, read and write files, and call external APIs without per-action prompts. **Only run Delphi on machines you control and trust.** You are responsible for the actions taken by your agent.
 
 ### No API keys included
 
-Claudhaus does not include, distribute, or proxy any API keys. You provide your own credentials via `.env`. Keep your `.env` file private — it is gitignored by default.
+Delphi does not include, distribute, or proxy any API keys. You provide your own credentials via `.env`. Keep your `.env` file private — it is gitignored by default.
 
 ### Responsible use
 
-Claudhaus gives your agent access to powerful tools including Bash execution, file system access, and external service integrations. Use it responsibly and in accordance with the terms of any third-party services you connect (GitHub, HubSpot, Slack, etc.).
+Delphi gives your agent access to powerful tools including Bash execution, file system access, and external service integrations. Use it responsibly and in accordance with the terms of any third-party services you connect (GitHub, HubSpot, Slack, etc.).
 
 ---
 
