@@ -1,0 +1,51 @@
+---
+title: Sub-agents
+description: Spawn focused AI specialists with their own workspaces and tool sets.
+---
+
+Sub-agents are separate Claude sessions with their own system prompt, tool set, and workspace. The main agent spawns them for focused work — research, code review, data processing — and gets the result back.
+
+## Creating a sub-agent
+
+```
+"create a sub-agent called researcher that searches the web and summarizes findings"
+```
+
+Or directly:
+
+```
+subagent_create(
+  name="researcher",
+  description="Searches and summarizes web content",
+  system_prompt="You are a research specialist...",
+  tools=["WebSearch", "WebFetch", "Read"]
+)
+```
+
+## Running a sub-agent
+
+```
+"ask the researcher to find everything published about Claude Agent SDK in the last 30 days"
+```
+
+Or:
+
+```
+subagent_run(name="researcher", task="Find recent publications about Claude Agent SDK")
+```
+
+The main agent waits for the result and incorporates it into its response.
+
+## Design principles
+
+- **Minimal tools** — give sub-agents only what they need, not `*`
+- **Focused system prompt** — narrow scope produces better results
+- **Clear task descriptions** — the sub-agent starts with no context except its system prompt and the task
+
+## Listing sub-agents
+
+```
+subagent_list()
+```
+
+Returns all defined sub-agents with their name and description.

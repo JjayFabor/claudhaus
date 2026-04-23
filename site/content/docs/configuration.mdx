@@ -1,0 +1,51 @@
+---
+title: Configuration
+description: Environment variables reference for Claudhaus.
+---
+
+All configuration lives in `.env` in the project root. Copy `.env.example` to get started — the setup wizard does this automatically.
+
+## Telegram
+
+| Variable | Default | Description |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | — | Your bot token from [@BotFather](https://t.me/BotFather) |
+| `TELEGRAM_ALLOWED_USER_IDS` | — | Comma-separated Telegram user IDs who can use the bot |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | — | Group/channel IDs (if empty, DMs only) |
+
+## Agent behavior
+
+| Variable | Default | Description |
+|---|---|---|
+| `MAIN_EXTRA_TOOLS` | `*` | `*` = all tools; comma-list to restrict (e.g. `Bash,Read,Write`) |
+
+## Voice transcription
+
+| Variable | Default | Description |
+|---|---|---|
+| `WHISPER_PROVIDER` | `none` | `none`, `openai`, or `local` |
+| `OPENAI_API_KEY` | — | Required when `WHISPER_PROVIDER=openai` |
+
+## Discord
+
+| Variable | Default | Description |
+|---|---|---|
+| `DISCORD_BOT_TOKEN` | — | Discord bot token (leave blank to disable Discord) |
+| `DISCORD_ALLOWED_USER_IDS` | — | Comma-separated Discord user IDs (empty = allow all) |
+| `DISCORD_ALLOWED_GUILD_IDS` | — | Comma-separated server IDs (empty = allow all) |
+
+## Dreaming (nightly memory consolidation)
+
+| Variable | Default | Description |
+|---|---|---|
+| `DREAMING_ENABLED` | `false` | Enable nightly memory sweep |
+| `DREAMING_LOOKBACK_DAYS` | `30` | Days of daily notes to sweep |
+| `DREAMING_PROMOTION_THRESHOLD` | `0.6` | Score threshold to promote a memory to `DREAMS.md` |
+
+## Dashboard
+
+| Variable | Default | Description |
+|---|---|---|
+| `DASHBOARD_PORT` | `8000` | Port for the internal dashboard |
+
+<Warning>Never commit `.env` to git. It is gitignored by default. Keep your bot token and API keys private.</Warning>

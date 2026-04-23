@@ -1,0 +1,53 @@
+---
+title: Scheduler
+description: Schedule recurring and one-shot tasks that run automatically.
+---
+
+The scheduler lets you set up tasks that run on a timer — daily reports, periodic checks, reminders — without you having to trigger them manually.
+
+## Recurring tasks
+
+```
+"check GitHub for open PRs every morning at 9am and send me a summary"
+"run a memory consolidation sweep every Sunday at midnight"
+```
+
+Or:
+
+```
+scheduler_add(
+  task="Summarize open GitHub PRs and send_message the results",
+  schedule_str="every day at 9am"
+)
+```
+
+`schedule_str` accepts natural language: `"every 30 minutes"`, `"every 2 hours"`, `"every day at 9am"`, `"every Monday at 8am"`.
+
+## One-shot tasks
+
+```
+"remind me to review the PR in 2 hours"
+"at 3pm, check if the staging deploy finished"
+```
+
+Or:
+
+```
+schedule_once(
+  task="send_message('Time to review the PR')",
+  when_str="in 2 hours"
+)
+```
+
+`when_str` accepts: `"in 30 minutes"`, `"in 2 hours"`, `"at 3pm"`, `"tomorrow at 9am"`.
+
+## Managing scheduled tasks
+
+```
+scheduler_list()      # see all tasks with their IDs and schedules
+scheduler_remove(id)  # remove a recurring task by ID
+```
+
+## Persistence
+
+Scheduled tasks survive restarts. They are stored in the SQLite database and reloaded when the agent starts.
