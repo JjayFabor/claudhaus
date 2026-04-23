@@ -12,7 +12,7 @@ export default function Sidebar({ nav, basePath }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <nav className="w-60 flex-shrink-0 hidden lg:block">
+    <nav aria-label="Sidebar" className="w-60 flex-shrink-0 hidden lg:block">
       {nav.map(section => (
         <div key={section.title} className="mb-8">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-text-muted mb-3 px-3">

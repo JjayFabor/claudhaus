@@ -78,9 +78,11 @@ python3 scripts/setup.py`}</code>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface">
-                <th className="px-5 py-3 text-left font-medium text-text-muted w-1/3" />
-                <th className="px-5 py-3 text-left font-semibold text-accent">claudhaus</th>
-                <th className="px-5 py-3 text-left font-medium text-text-muted">OpenClaw</th>
+                <th scope="col" className="px-5 py-3 text-left font-medium text-text-muted w-1/3">
+                  <span className="sr-only">Feature</span>
+                </th>
+                <th scope="col" className="px-5 py-3 text-left font-semibold text-accent">claudhaus</th>
+                <th scope="col" className="px-5 py-3 text-left font-medium text-text-muted">OpenClaw</th>
               </tr>
             </thead>
             <tbody>

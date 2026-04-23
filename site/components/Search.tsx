@@ -23,6 +23,7 @@ export default function Search() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
   const scriptLoadedRef = useRef(false)
 
   // Keyboard shortcut
@@ -88,8 +89,21 @@ export default function Search() {
             role="dialog"
             aria-modal="true"
             aria-label="Search"
+            ref={modalRef}
             className="w-full max-w-xl bg-surface border border-border rounded-xl shadow-2xl overflow-hidden mx-4"
             onClick={e => e.stopPropagation()}
+            onKeyDown={e => {
+              if (e.key !== 'Tab' || !modalRef.current) return
+              const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+                'a[href], button, input, [tabindex]:not([tabindex="-1"])'
+              )
+              const first = focusable[0]
+              const last = focusable[focusable.length - 1]
+              if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+                e.preventDefault()
+                ;(e.shiftKey ? last : first).focus()
+              }
+            }}
           >
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
               <SearchIcon size={16} className="text-text-muted flex-shrink-0" />
@@ -106,7 +120,7 @@ export default function Search() {
             </div>
 
             {results.length > 0 && (
-              <ul className="divide-y divide-border max-h-80 overflow-y-auto">
+              <ul aria-live="polite" className="divide-y divide-border max-h-80 overflow-y-auto">
                 {results.map(r => (
                   <li key={r.url}>
                     <a

@@ -11,7 +11,7 @@ export default function Nav() {
           claudhaus
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-text-muted">
+        <nav aria-label="Main" className="hidden md:flex items-center gap-6 text-sm text-text-muted">
           <Link href="/docs" className="hover:text-text-primary transition-colors">Docs</Link>
           <Link href="/api-reference" className="hover:text-text-primary transition-colors">API Reference</Link>
           <a
