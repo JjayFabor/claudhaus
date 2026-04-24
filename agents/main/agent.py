@@ -1065,11 +1065,11 @@ def md_to_html(text: str) -> str:
             code_lines = []
             i += 1
             while i < len(lines) and not lines[i].startswith("```"):
-                code_lines.append(html.escape(lines[i]))
+                code_lines.append(html.escape(lines[i], quote=False))
                 i += 1
             code_body = "\n".join(code_lines)
             if lang:
-                result.append(f"<pre><code class='language-{html.escape(lang)}'>{code_body}</code></pre>")
+                result.append(f'<pre><code class="language-{html.escape(lang)}">{code_body}</code></pre>')
             else:
                 result.append(f"<pre>{code_body}</pre>")
             i += 1
@@ -1082,7 +1082,7 @@ def md_to_html(text: str) -> str:
                 if not re.match(r"^\s*\|[-| :]+\|\s*$", lines[i]):
                     rows.append([c.strip() for c in lines[i].strip().strip("|").split("|")])
                 i += 1
-            result.append("<pre>" + html.escape(_format_table(rows)) + "</pre>")
+            result.append("<pre>" + html.escape(_format_table(rows), quote=False) + "</pre>")
             continue
 
         # Standalone bold line (e.g. **Phase 3 — …**) → treat as heading with spacing
@@ -1156,22 +1156,22 @@ def _inline(text: str) -> str:
     pos = 0
     for m in _INLINE_RE.finditer(text):
         if m.start() > pos:
-            result.append(html.escape(text[pos:m.start()]))
+            result.append(html.escape(text[pos:m.start()], quote=False))
         if m.group("code") is not None:
-            result.append(f"<code>{html.escape(m.group('code'))}</code>")
+            result.append(f"<code>{html.escape(m.group('code'), quote=False)}</code>")
         elif m.group("bold") is not None:
             result.append(f"<b>{_inline(m.group('bold'))}</b>")
         elif m.group("italic") is not None:
-            result.append(f"<i>{html.escape(m.group('italic'))}</i>")
+            result.append(f"<i>{html.escape(m.group('italic'), quote=False)}</i>")
         elif m.group("italic2") is not None:
-            result.append(f"<i>{html.escape(m.group('italic2'))}</i>")
+            result.append(f"<i>{html.escape(m.group('italic2'), quote=False)}</i>")
         elif m.group("strike") is not None:
-            result.append(f"<s>{html.escape(m.group('strike'))}</s>")
+            result.append(f"<s>{html.escape(m.group('strike'), quote=False)}</s>")
         elif m.group("link_text") is not None:
-            result.append(f'<a href="{html.escape(m.group("link_url"))}">{html.escape(m.group("link_text"))}</a>')
+            result.append(f'<a href="{html.escape(m.group("link_url"))}">{html.escape(m.group("link_text"), quote=False)}</a>')
         pos = m.end()
     if pos < len(text):
-        result.append(html.escape(text[pos:]))
+        result.append(html.escape(text[pos:], quote=False))
     return "".join(result)
 
 
@@ -1502,7 +1502,7 @@ async def cmd_share(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_share_context(DB_PATH, from_chat_id=chat_id, to_chat_id=to_chat_id, content=content)
 
     # Push notification to recipient
-    push_text = f"📤 <b>{html.escape(from_name)}</b> shared something with you:\n{html.escape(content)}"
+    push_text = f"📤 <b>{html.escape(from_name, quote=False)}</b> shared something with you:\n{html.escape(content, quote=False)}"
     push_failed = False
     try:
         await context.bot.send_message(to_chat_id, push_text, parse_mode=ParseMode.HTML)
@@ -1576,8 +1576,8 @@ async def cmd_revoke(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Notify recipient
     snippet = content_hint[:80]
     notif = (
-        f"🚫 <b>{html.escape(from_name)}</b> revoked shared context: "
-        f"<i>{html.escape(snippet)}</i>"
+        f"🚫 <b>{html.escape(from_name, quote=False)}</b> revoked shared context: "
+        f"<i>{html.escape(snippet, quote=False)}</i>"
     )
     push_failed = False
     try:
@@ -1826,10 +1826,10 @@ async def _handle_pull(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     for sender in grouped.values():
         sender_items = sender["items"]
         from_name = sender["name"]
-        lines.append(f"<b>From {html.escape(from_name)}</b> ({len(sender_items)} item(s))")
+        lines.append(f"<b>From {html.escape(from_name, quote=False)}</b> ({len(sender_items)} item(s))")
         for item in sender_items:
             date_str = item["shared_at"][:10]
-            lines.append(f"  • <i>({date_str})</i> {html.escape(item['content'])}")
+            lines.append(f"  • <i>({date_str})</i> {html.escape(item['content'], quote=False)}")
         lines.append("")
 
     formatted = "\n".join(lines).strip()
