@@ -2008,7 +2008,6 @@ def main() -> None:
     app.add_handler(CommandHandler("reset", cmd_reset))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("restart", cmd_restart))
-    app.add_handler(CommandHandler("cancel", cmd_cancel))
     app.add_handler(CommandHandler("stop", cmd_cancel))
     app.add_handler(CommandHandler("share", cmd_share))
     app.add_handler(CommandHandler("revoke", cmd_revoke))
