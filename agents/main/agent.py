@@ -1873,9 +1873,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Wait for MCP connections to initialise after startup/restart
     if _mcp_ready_event and not _mcp_ready_event.is_set():
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id, action=ChatAction.TYPING
-        )
+        try:
+            await context.bot.send_chat_action(
+                chat_id=update.effective_chat.id, action=ChatAction.TYPING
+            )
+        except Exception:
+            pass
         try:
             await asyncio.wait_for(
                 asyncio.shield(_mcp_ready_event.wait()), timeout=_MCP_PROBE_TIMEOUT
@@ -1905,7 +1908,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Fire flush turn if we're near the context limit (transparent to user)
     await maybe_flush(chat_id)
 
-    await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    try:
+        await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+    except Exception:
+        pass
     typing_task = asyncio.create_task(_keep_typing(context, chat_id))
 
     try:
@@ -1937,7 +1943,10 @@ async def _keep_typing(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None
     try:
         while True:
             await asyncio.sleep(4)
-            await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+            try:
+                await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+            except Exception:
+                pass
     except asyncio.CancelledError:
         pass
 
