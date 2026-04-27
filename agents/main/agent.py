@@ -293,6 +293,59 @@ async def tool_wiki_list(_args: dict) -> dict:
     return {"content": [{"type": "text", "text": "\n".join(pages)}]}
 
 
+@sdk.tool(
+    name="wiki_delete",
+    description="Delete a wiki page by its path slug (e.g. 'hubspot/old-page'). Removes the file and cleans up empty parent directories.",
+    input_schema={"path": str},
+)
+async def tool_wiki_delete(args: dict) -> dict:
+    path_arg = args.get("path", "").strip().strip("/")
+    if not path_arg:
+        return {"content": [{"type": "text", "text": "Error: path is required."}], "is_error": True}
+    target = WORKSPACE / "wiki" / (path_arg if path_arg.endswith(".md") else f"{path_arg}.md")
+    if not target.exists():
+        return {"content": [{"type": "text", "text": f"Wiki page not found: wiki/{path_arg}.md"}], "is_error": True}
+    target.unlink()
+    # Clean up empty parent directories (but never remove the wiki root itself)
+    parent = target.parent
+    wiki_root = WORKSPACE / "wiki"
+    while parent != wiki_root and parent.exists() and not any(parent.iterdir()):
+        parent.rmdir()
+        parent = parent.parent
+    logger.info("wiki_delete: removed wiki/%s.md", path_arg)
+    return {"content": [{"type": "text", "text": f"Wiki page deleted: wiki/{path_arg}.md"}]}
+
+
+@sdk.tool(
+    name="wiki_rename",
+    description="Rename (move) a wiki page from one path slug to another. Atomic move — old path is removed, new path is created. Cleans up empty parent directories after move.",
+    input_schema={"old_path": str, "new_path": str},
+)
+async def tool_wiki_rename(args: dict) -> dict:
+    old_arg = args.get("old_path", "").strip().strip("/")
+    new_arg = args.get("new_path", "").strip().strip("/")
+    if not old_arg or not new_arg:
+        return {"content": [{"type": "text", "text": "Error: old_path and new_path are required."}], "is_error": True}
+    old_target = WORKSPACE / "wiki" / (old_arg if old_arg.endswith(".md") else f"{old_arg}.md")
+    new_target = WORKSPACE / "wiki" / (new_arg if new_arg.endswith(".md") else f"{new_arg}.md")
+    if not old_target.exists():
+        return {"content": [{"type": "text", "text": f"Wiki page not found: wiki/{old_arg}.md"}], "is_error": True}
+    if new_target.exists():
+        return {"content": [{"type": "text", "text": f"Destination already exists: wiki/{new_arg}.md — delete it first or choose a different path."}], "is_error": True}
+    new_target.parent.mkdir(parents=True, exist_ok=True)
+    old_target.rename(new_target)
+    if _mem_index:
+        _mem_index.reindex_file(new_target)
+    # Clean up empty parent directories after move
+    parent = old_target.parent
+    wiki_root = WORKSPACE / "wiki"
+    while parent != wiki_root and parent.exists() and not any(parent.iterdir()):
+        parent.rmdir()
+        parent = parent.parent
+    logger.info("wiki_rename: wiki/%s.md → wiki/%s.md", old_arg, new_arg)
+    return {"content": [{"type": "text", "text": f"Wiki page renamed: wiki/{old_arg}.md → wiki/{new_arg}.md"}]}
+
+
 # ── Connector tools ───────────────────────────────────────────────────────────
 
 @sdk.tool(
