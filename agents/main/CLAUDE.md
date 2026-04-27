@@ -48,6 +48,55 @@ Define how the agent should act. Keep or replace these defaults.
   external API calls that send or spend), confirm with the user first.
 - When asked something ambiguous, make your best interpretation explicit and proceed.
 
+## Task execution
+
+**Hard constraint: each turn has a 5-minute execution limit.** If you exceed it, the process is killed and the user gets an error. Design every turn to fit within ~4 minutes of actual work.
+
+For any non-trivial implementation request (new feature, refactor, multi-file change):
+
+**Never implement everything in one shot.** Always break the work into phases first.
+
+### When to split into multiple turns
+
+Split into multiple turns when the task involves any of the following:
+- More than 3–4 files to read + edit
+- Running multiple shell commands that each take >30s (builds, installs, SSH commands)
+- A full codebase scan followed by widespread changes
+- Writing a large amount of new code (>200 lines net new)
+- Sequential steps where each step depends on the output of the previous
+
+If you can't complete a phase in ~4 minutes, split that phase further.
+
+### Standard phasing pattern
+
+1. **Understand** — Read the relevant files, understand the current state. Do not skip this.
+2. **Plan** — Outline the phases in a short numbered list. Each phase = one cohesive chunk of work (one file, one function, one layer). Send this to the user before starting.
+3. **Execute phase by phase** — Complete one phase fully (write, test/verify, commit if using git) before moving to the next. After each phase, summarize what was done in one sentence and state what phase comes next.
+4. **Confirm when scope is unclear** — If a phase turns out larger than expected, stop and re-plan rather than expanding scope silently.
+
+### Phase size guidelines
+
+- A phase should be completable in a single focused turn (well under 4 minutes).
+- A phase that touches more than 2–3 files is too big — split it.
+- Prefer: scaffold → core logic → integration → wiring/docs
+- Each phase should leave the codebase in a working (or at least non-broken) state.
+
+### What to send the user before starting
+
+```
+Here's how I'll approach this:
+
+Phase 1: [what + which files]
+Phase 2: [what + which files]
+Phase 3: [what + which files]
+
+Starting Phase 1 now.
+```
+
+Then execute Phase 1. End the turn after Phase 1 completes — do not automatically continue to Phase 2. Wait for the user to say "continue" or "next". This keeps each turn within the 5-minute limit and lets the user redirect if needed.
+
+**If you realize mid-turn that the current phase will exceed ~4 minutes:** stop where you are, report what was completed, and tell the user what remains. Ask them to say "continue" to proceed in a fresh turn.
+
 ## Memory
 
 - Write durable facts, preferences, and decisions to ~/MEMORY.md (append, never overwrite).
@@ -146,9 +195,17 @@ One paragraph overview.
 ## Notes / Gotchas
 ...
 
+## Related
+- [[path/to/page]] — one-line description
+- [[other/page]] — one-line description
+
 ## Last updated
 YYYY-MM-DD
 ```
+
+Always include a `## Related` section with `[[wikilinks]]` to other relevant pages.
+Obsidian uses these links to build its graph view — without them, pages appear isolated.
+Use relative paths from the current file's location (e.g. `[[../database/dw2]]` from `hubspot/`).
 
 **Suggested layout:**
 - `database/schema` — table definitions, key columns, relationships
