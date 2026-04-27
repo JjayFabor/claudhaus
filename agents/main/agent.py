@@ -2104,6 +2104,7 @@ def main() -> None:
     (WORKSPACE / "memory").mkdir(exist_ok=True)
     (WORKSPACE / "sessions").mkdir(exist_ok=True)
     (WORKSPACE / "wiki").mkdir(exist_ok=True)
+    (WORKSPACE / "raw").mkdir(exist_ok=True)
 
     # Seed memory files so they always exist for appending
     for seed in [WORKSPACE / "MEMORY.md", WORKSPACE / "DREAMS.md"]:
