@@ -50,41 +50,51 @@ Define how the agent should act. Keep or replace these defaults.
 
 ## Task execution
 
-**Hard constraint: each turn has a 5-minute execution limit.** If you exceed it, the process is killed and the user gets an error. Design every turn to fit within ~4 minutes of actual work.
+**HARD SYSTEM CONSTRAINT: each turn has a 5-minute execution limit. If you exceed it, the subprocess is killed, all work in progress is lost, and the user gets an error. This is not a preference — it is a technical ceiling you cannot work around.**
 
-For any non-trivial implementation request (new feature, refactor, multi-file change):
+For any non-trivial request (new feature, refactor, multi-file change, debugging session):
 
-**Never implement everything in one shot.** Always break the work into phases first.
+**NEVER execute all phases in one turn. ONE phase per turn. Always.**
 
-### When to split into multiple turns
+### When a task needs phasing
 
-Split into multiple turns when the task involves any of the following:
-- More than 3–4 files to read + edit
-- Running multiple shell commands that each take >30s (builds, installs, SSH commands)
-- A full codebase scan followed by widespread changes
-- Writing a large amount of new code (>200 lines net new)
-- Sequential steps where each step depends on the output of the previous
+Phase any task that involves:
+- Reading + editing more than 2–3 files
+- Running shell commands that take >30s (builds, installs, deploys)
+- Writing >150 lines of new code
+- Any sequence of steps where step 2 depends on step 1's output
 
-If you can't complete a phase in ~4 minutes, split that phase further.
+When in doubt, phase it. A task that fits in one turn can always be done in one turn — but a task that doesn't fit will be killed and lost.
 
-### Standard phasing pattern
+### The rule: ONE phase per turn, then STOP
 
-1. **Understand** — Read the relevant files, understand the current state. Do not skip this.
-2. **Plan** — Outline the phases in a short numbered list. Each phase = one cohesive chunk of work (one file, one function, one layer). Send this to the user before starting.
-3. **Execute phase by phase** — Complete one phase fully (write, test/verify, commit if using git) before moving to the next. After each phase, summarize what was done in one sentence and state what phase comes next.
-4. **Confirm when scope is unclear** — If a phase turns out larger than expected, stop and re-plan rather than expanding scope silently.
+1. **Plan first** — before writing a single line of code, outline all phases and send the plan to the user.
+2. **Execute Phase 1 only** — do the work for Phase 1, nothing else.
+3. **End with the exact stop marker** (see below) — then stop. Do not begin Phase 2.
+4. **Wait** — the user will say "continue" to trigger Phase 2 in a new turn.
 
-### Phase size guidelines
+### Required stop marker
 
-- A phase should be completable in a single focused turn (well under 4 minutes).
-- A phase that touches more than 2–3 files is too big — split it.
-- Prefer: scaffold → core logic → integration → wiring/docs
-- Each phase should leave the codebase in a working (or at least non-broken) state.
-
-### What to send the user before starting
+After completing any phase, you MUST end your response with:
 
 ```
-Here's how I'll approach this:
+✅ Phase [N] done — [one sentence summary of what was completed].
+Reply **continue** for Phase [N+1]: [brief description of next phase].
+```
+
+Do NOT write any code or take any action after this line. STOP.
+
+### Mid-turn bail-out
+
+If you are already executing and realize the current phase is taking longer than expected:
+- Finish the current logical unit (one file, one function — not the whole phase)
+- Output the stop marker with what was done and what remains
+- STOP
+
+### What to send before starting
+
+```
+Here's my plan:
 
 Phase 1: [what + which files]
 Phase 2: [what + which files]
@@ -93,9 +103,7 @@ Phase 3: [what + which files]
 Starting Phase 1 now.
 ```
 
-Then execute Phase 1. End the turn after Phase 1 completes — do not automatically continue to Phase 2. Wait for the user to say "continue" or "next". This keeps each turn within the 5-minute limit and lets the user redirect if needed.
-
-**If you realize mid-turn that the current phase will exceed ~4 minutes:** stop where you are, report what was completed, and tell the user what remains. Ask them to say "continue" to proceed in a fresh turn.
+Then execute Phase 1 and output the stop marker. Nothing more.
 
 ## Memory
 
