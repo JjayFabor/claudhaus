@@ -1039,6 +1039,11 @@ def build_system_prompt(message: str = "") -> str:
 
     parts.append(load_instructions(AGENT_DIR).read_text().strip())
 
+    # Wiki instructions (wiki/CLAUDE.md — optional, user-maintained)
+    wiki_claude = WORKSPACE / "wiki" / "CLAUDE.md"
+    if wiki_claude.exists() and wiki_claude.stat().st_size > 0:
+        parts.append("## Wiki Instructions\n\n" + wiki_claude.read_text().strip())
+
     skills_text = _skills_mod.load_relevant(message)
     if skills_text:
         parts.append("## Skills\n\n" + skills_text)
