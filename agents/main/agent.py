@@ -910,7 +910,7 @@ _memory_mcp = sdk.create_sdk_mcp_server(
     name="memory",
     tools=[
         tool_memory_search, tool_memory_write_long_term, tool_memory_write_daily, tool_memory_read_file,
-        tool_wiki_write, tool_wiki_read, tool_wiki_list,
+        tool_wiki_write, tool_wiki_read, tool_wiki_list, tool_wiki_delete, tool_wiki_rename,
         tool_connector_list, tool_connector_add, tool_connector_remove, tool_connector_info,
         tool_skill_list, tool_skill_read, tool_skill_write, tool_skill_delete,
         tool_subagent_list, tool_subagent_create, tool_subagent_run,
